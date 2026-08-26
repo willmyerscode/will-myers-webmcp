@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { registerWebMCPTools } from "../src/index.js";
 
-test("a supported browser receives the two pilot tools", async () => {
+test("a supported browser receives only the product search tool", async () => {
   const registrations = [];
   const browser = {
     document: {
@@ -17,13 +17,13 @@ test("a supported browser receives the two pilot tools", async () => {
       ok: true,
       async json() {
         return {
-          items: [
+          products: [
             {
               id: "mega-menu",
               title: "Mega Menu for Squarespace 7.1",
-              fullUrl: "/products/p/mega-menu-for-squarespace-71",
-              excerpt: "<p>Add more content to your site navigation.</p>",
-              priceMoney: { currency: "USD", value: "25.00" },
+              url: "https://www.will-myers.com/products/p/mega-menu-for-squarespace-71",
+              summary: "Add more content to your site navigation.",
+              price: { currency: "USD", value: "25" },
               onSale: false,
               tags: ["Plugin"],
             },
@@ -31,28 +31,16 @@ test("a supported browser receives the two pilot tools", async () => {
         };
       },
     }),
-    location: {
-      href: "https://www.will-myers.com/products",
-      pathname: "/products",
-      assign() {},
-    },
-    sessionStorage: {
-      getItem() {
-        return null;
-      },
-      setItem() {},
-      removeItem() {},
-    },
+    location: { href: "https://www.will-myers.com/products" },
   };
 
   await registerWebMCPTools(browser);
 
   assert.deepEqual(
     registrations.map(({ tool }) => tool.name),
-    ["find_products", "start_support_request"],
+    ["find_products"],
   );
   assert.equal(registrations[0].tool.annotations.readOnlyHint, true);
-  assert.equal(registrations[1].tool.annotations.readOnlyHint, false);
 
   const result = await registrations[0].tool.execute(
     { query: "navigation menu", max_results: 3 },

@@ -17,17 +17,14 @@ Use a WebMCP-capable ChatGPT desktop browser on will-myers.com.
 1. "Find a plugin that turns a list section into a timeline."
 2. "Find a plugin for a large navigation menu. Show three options at most."
 3. "Find a product for an unrelated need." Confirm that the response says no close match.
-4. "Prepare a support request for the Step Flow Timeline." Supply the required contact details.
-5. Confirm that `/contact` opens and the safe fields are filled.
-6. Confirm that the admin-access box is empty and the form is not sent.
-7. Try an invalid email and a `javascript:` URL. Confirm that the tool rejects both.
+4. Confirm that the tool returns public product links and does not start a purchase.
 
 ## Normal-site fallback
 
 1. Open the site in a browser without WebMCP support.
 2. Confirm that the console has no uncaught WebMCP error.
-3. Confirm that products, navigation, and the contact form still work normally.
+3. Confirm that products and navigation still work normally.
 
 ## Rollback
 
-Remove the one `webmcp.js` script tag from Squarespace footer code injection. The pilot has no database, account state, or server-side cleanup.
+Remove the one `webmcp.js` script tag from Squarespace footer code injection. The pilot has no database or account state. The Cloudflare secret can be deleted separately.

@@ -35,15 +35,15 @@ function tokenizeSearchText(value) {
 }
 
 export function normalizeCatalog(response, siteOrigin) {
-  if (!response || !Array.isArray(response.items)) {
-    throw new Error("The public product catalog did not contain an item list.");
+  if (!response || !Array.isArray(response.products)) {
+    throw new Error("The product service did not contain a product list.");
   }
-  if (response.items.length === 0) {
-    throw new Error("The public product catalog did not contain any items.");
+  if (response.products.length === 0) {
+    throw new Error("The product service did not contain any products.");
   }
 
-  const changedItemIndex = response.items.findIndex(
-    (item) => !item || !item.id || !item.title || !item.fullUrl,
+  const changedItemIndex = response.products.findIndex(
+    (item) => !item || !item.id || !item.title || !item.url,
   );
   if (changedItemIndex >= 0) {
     throw new Error(
@@ -51,20 +51,20 @@ export function normalizeCatalog(response, siteOrigin) {
     );
   }
 
-  return response.items.map((item) => ({
+  return response.products.map((item) => ({
       id: String(item.id),
       title: String(item.title).trim(),
-      summary: htmlToText(item.excerpt || ""),
+      summary: htmlToText(item.summary || ""),
       price:
-        item.priceMoney?.currency && item.priceMoney?.value
+        item.price?.currency && item.price?.value !== undefined
           ? {
-              currency: String(item.priceMoney.currency),
-              value: String(item.priceMoney.value),
+              currency: String(item.price.currency),
+              value: String(item.price.value),
             }
           : null,
       onSale: Boolean(item.onSale),
-      url: new URL(String(item.fullUrl), siteOrigin).href,
-      searchText: [item.title, htmlToText(item.excerpt || ""), ...(item.tags || [])]
+      url: new URL(String(item.url), siteOrigin).href,
+      searchText: [item.title, htmlToText(item.summary || ""), ...(item.tags || [])]
         .join(" ")
         .toLocaleLowerCase("en-US"),
     }));
@@ -126,12 +126,18 @@ function validateMaxResults(value) {
  * @param {{
  *   fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
  *   signal?: AbortSignal,
- *   siteOrigin?: string
+ *   siteOrigin?: string,
+ *   apiUrl?: string
  * }} options
  */
 export async function findProducts(
   input,
-  { fetch: fetchCatalog = fetch, signal, siteOrigin = "https://www.will-myers.com" } = {},
+  {
+    fetch: fetchCatalog = fetch,
+    signal,
+    siteOrigin = "https://www.will-myers.com",
+    apiUrl = "https://will-myers-webmcp.otis.solutions/api/products",
+  } = {},
 ) {
   if (input?.query === undefined || input?.query === null) {
     throw new Error("A product search query is required.");
@@ -147,14 +153,12 @@ export async function findProducts(
   }
 
   const maxResults = validateMaxResults(input?.max_results ?? 5);
-  const catalogUrl = new URL("/products?format=json", siteOrigin);
-  const response = await fetchCatalog(catalogUrl.href, {
-    credentials: "same-origin",
+  const response = await fetchCatalog(apiUrl, {
     headers: { Accept: "application/json" },
     signal,
   });
   if (!response.ok) {
-    throw new Error(`The public product catalog returned HTTP ${response.status || "error"}.`);
+    throw new Error(`The product service returned HTTP ${response.status || "error"}.`);
   }
 
   const products = normalizeCatalog(await response.json(), siteOrigin);

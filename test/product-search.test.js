@@ -8,40 +8,40 @@ import {
 } from "../src/product-search.js";
 
 const catalogResponse = {
-  items: [
+  products: [
     {
       id: "collection-sync",
       title: "Collection to List Section Sync",
-      fullUrl: "/products/p/collection-to-list-section-sync",
-      excerpt: "<p>Sync collections into list sections and simple lists.</p>",
-      priceMoney: { currency: "USD", value: "25.00" },
+      url: "https://www.will-myers.com/products/p/collection-to-list-section-sync",
+      summary: "Sync collections into list sections and simple lists.",
+      price: { currency: "USD", value: "25" },
       onSale: false,
       tags: ["Plugin"],
     },
     {
       id: "timeline",
       title: "Step Flow Timeline",
-      fullUrl: "/products/p/step-flow-timeline",
-      excerpt: "<p>Transform List Sections into elegant timelines.</p>",
-      priceMoney: { currency: "USD", value: "25.00" },
+      url: "https://www.will-myers.com/products/p/step-flow-timeline",
+      summary: "Transform List Sections into elegant timelines.",
+      price: { currency: "USD", value: "25" },
       onSale: false,
       tags: ["Plugin"],
     },
     {
       id: "hamburger",
       title: "Mega Hamburger Menu",
-      fullUrl: "/products/p/hamburger-menu",
-      excerpt: "<p>Import a page as hamburger menu content.</p>",
-      priceMoney: { currency: "USD", value: "25.00" },
+      url: "https://www.will-myers.com/products/p/hamburger-menu",
+      summary: "Import a page as hamburger menu content.",
+      price: { currency: "USD", value: "25" },
       onSale: false,
       tags: ["Plugin"],
     },
     {
       id: "menu",
       title: "Mega Menu for Squarespace 7.1",
-      fullUrl: "/products/p/mega-menu-for-squarespace-71",
-      excerpt: "<p>Add more content to your site navigation.</p>",
-      priceMoney: { currency: "USD", value: "25.00" },
+      url: "https://www.will-myers.com/products/p/mega-menu-for-squarespace-71",
+      summary: "Add more content to your site navigation.",
+      price: { currency: "USD", value: "25" },
       onSale: false,
       tags: ["Plugin"],
     },
@@ -58,7 +58,7 @@ test("find_products ranks the product that best matches the visitor's words", ()
       id: "timeline",
       title: "Step Flow Timeline",
       summary: "Transform List Sections into elegant timelines.",
-      price: { currency: "USD", value: "25.00" },
+      price: { currency: "USD", value: "25" },
       onSale: false,
       url: "https://www.will-myers.com/products/p/step-flow-timeline",
     },
@@ -119,9 +119,34 @@ test("find_products reports a changed required catalog field", () => {
   assert.throws(
     () =>
       normalizeCatalog(
-        { items: [{ id: "changed", title: "Changed product" }] },
+        { products: [{ id: "changed", title: "Changed product" }] },
         "https://www.will-myers.com",
       ),
     /required public fields/i,
+  );
+});
+
+test("find_products reads the product service instead of the Squarespace page", async () => {
+  let requestedUrl = "";
+
+  await findProducts(
+    { query: "menu" },
+    {
+      apiUrl: "https://will-myers-webmcp.otis.solutions/api/products",
+      fetch: async (url) => {
+        requestedUrl = String(url);
+        return {
+          ok: true,
+          async json() {
+            return catalogResponse;
+          },
+        };
+      },
+    },
+  );
+
+  assert.equal(
+    requestedUrl,
+    "https://will-myers-webmcp.otis.solutions/api/products",
   );
 });
