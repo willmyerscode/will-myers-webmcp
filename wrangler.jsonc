@@ -13,17 +13,6 @@
   ],
   "assets": {
     "directory": "./dist",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
-  },
-  "ratelimits": [
-    {
-      "name": "PRODUCT_REFRESH_LIMITER",
-      "namespace_id": "2791638241",
-      "simple": {
-        "limit": 5,
-        "period": 60
-      }
-    }
-  ]
+    "binding": "ASSETS"
+  }
 }

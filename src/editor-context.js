@@ -1,3 +1,6 @@
+import { normalizedText } from "./dom.js";
+import { TOOL_LIMITS } from "./limits.js";
+
 const COLOR_VARIABLES = Object.freeze([
   ["white", "--white-hsl"],
   ["black", "--black-hsl"],
@@ -63,14 +66,6 @@ function blockType(block) {
   return fallback || block.getAttribute?.("data-block-type") || "unknown";
 }
 
-function blockText(block) {
-  const copy = block.cloneNode(true);
-  for (const element of copy.querySelectorAll?.("script, style, noscript") || []) {
-    element.remove();
-  }
-  return (copy.textContent || "").replace(/\s+/g, " ").trim().slice(0, 240);
-}
-
 function readStructure(document) {
   const root =
     document.querySelector?.("main article") ||
@@ -80,15 +75,15 @@ function readStructure(document) {
     ...(root?.querySelectorAll?.("section[data-section-id], section.page-section") || []),
   ];
 
-  const sections = allSections.slice(0, 50).map((section) => ({
+  const sections = allSections.slice(0, TOOL_LIMITS.sections).map((section) => ({
     id: section.getAttribute("data-section-id") || section.id || null,
     theme: section.getAttribute("data-section-theme") || null,
     blocks: [...section.querySelectorAll(".sqs-block[id], [data-block-type][id]")]
-      .slice(0, 100)
+      .slice(0, TOOL_LIMITS.blocksPerSection)
       .map((block) => ({
         id: block.id || null,
         type: blockType(block),
-        text: blockText(block),
+        text: normalizedText(block, TOOL_LIMITS.blockTextCharacters),
       })),
   }));
 
@@ -97,7 +92,10 @@ function readStructure(document) {
 
 export function getPreviewDocument(browser) {
   const frame = browser.document?.querySelector?.("#sqs-site-frame");
-  return frame?.contentDocument || browser.document;
+  if (!frame?.contentDocument) {
+    throw new Error("The Squarespace page preview is not available.");
+  }
+  return frame.contentDocument;
 }
 
 /** @param {any} browser */

@@ -1,3 +1,6 @@
+import { TOOL_LIMITS } from "./limits.js";
+import { CODE_INJECTION_LOCATION_NAMES } from "./code-locations.js";
+
 export const GET_EDITOR_CONTEXT_SCHEMA = {
   type: "object",
   properties: {},
@@ -10,12 +13,31 @@ export const INSPECT_TARGET_SCHEMA = {
     selector: {
       type: "string",
       minLength: 1,
-      maxLength: 500,
+      maxLength: TOOL_LIMITS.selectorCharacters,
       description:
         "CSS selector for one section, block, or element in the active Squarespace preview.",
     },
   },
   required: ["selector"],
+  additionalProperties: false,
+};
+
+export const READ_CUSTOM_CSS_SCHEMA = {
+  type: "object",
+  properties: {},
+  additionalProperties: false,
+};
+
+export const READ_CODE_INJECTION_SCHEMA = {
+  type: "object",
+  properties: {
+    location: {
+      type: "string",
+      enum: CODE_INJECTION_LOCATION_NAMES,
+      description: "Squarespace code area to read.",
+    },
+  },
+  required: ["location"],
   additionalProperties: false,
 };
 
@@ -25,7 +47,7 @@ export const PREVIEW_CSS_SCHEMA = {
     css: {
       type: "string",
       minLength: 1,
-      maxLength: 50_000,
+      maxLength: TOOL_LIMITS.cssCharacters,
       description:
         "CSS to apply only to the current Squarespace preview. Use section and block IDs from get_editor_context.",
     },
@@ -39,10 +61,3 @@ export const CLEAR_PREVIEW_SCHEMA = {
   properties: {},
   additionalProperties: false,
 };
-
-// Keep the retired pilot service valid while its Worker endpoint remains deployed.
-export const LIMITS = Object.freeze({
-  productQuery: 200,
-  maxResultsMin: 1,
-  maxResultsMax: 10,
-});

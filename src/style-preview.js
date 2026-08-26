@@ -1,14 +1,16 @@
 import { getEditorContext, getPreviewDocument } from "./editor-context.js";
+import { TOOL_LIMITS } from "./limits.js";
 
 const STYLE_ID = "wills-toolkit-mcp-preview";
-const MAX_CSS_LENGTH = 50_000;
 
 function validateCss(input) {
   if (typeof input !== "string" || !input.trim()) {
     throw new Error("CSS is required.");
   }
-  if (input.length > MAX_CSS_LENGTH) {
-    throw new Error("CSS must contain 50,000 characters or fewer.");
+  if (input.length > TOOL_LIMITS.cssCharacters) {
+    throw new Error(
+      `CSS must contain ${TOOL_LIMITS.cssCharacters.toLocaleString("en-US")} characters or fewer.`,
+    );
   }
   if (/@import\b|url\s*\(/i.test(input)) {
     throw new Error("Temporary CSS cannot load external files.");

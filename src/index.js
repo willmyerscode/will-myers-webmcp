@@ -3,10 +3,13 @@ import {
   GET_EDITOR_CONTEXT_SCHEMA,
   INSPECT_TARGET_SCHEMA,
   PREVIEW_CSS_SCHEMA,
+  READ_CODE_INJECTION_SCHEMA,
+  READ_CUSTOM_CSS_SCHEMA,
 } from "./contracts.js";
 import { getEditorContext } from "./editor-context.js";
 import { clearPreview, previewCss } from "./style-preview.js";
 import { inspectTarget } from "./target-inspection.js";
+import { readCodeInjection, readCustomCss } from "./site-code.js";
 
 export const VERSION = "0.2.0";
 
@@ -43,7 +46,15 @@ function installEditorBootstrap(browser) {
 /** @param {any} browser */
 export async function registerWebMCPTools(browser = window) {
   const modelContext = browser.document?.modelContext;
-  if (!modelContext?.registerTool) return false;
+  const editorUrl = new URL(browser.location?.href || "about:blank");
+  const previewFrame = browser.document?.querySelector?.("#sqs-site-frame");
+  if (
+    !modelContext?.registerTool ||
+    !editorUrl.pathname.startsWith("/config") ||
+    !previewFrame?.contentDocument
+  ) {
+    return false;
+  }
 
   browser.__willsToolkitMCPController?.abort();
   const Controller = browser.AbortController || AbortController;
@@ -81,6 +92,42 @@ export async function registerWebMCPTools(browser = window) {
       },
       async execute(input) {
         return inspectTarget(browser, input);
+      },
+    },
+    { signal: controller.signal },
+  );
+
+  await modelContext.registerTool(
+    {
+      name: "read_custom_css",
+      title: "Read Squarespace Custom CSS",
+      description:
+        "Read the current Custom CSS from the editor when it is open, or read the saved Custom CSS. This tool can return private site code. It does not change or save anything.",
+      inputSchema: READ_CUSTOM_CSS_SCHEMA,
+      annotations: {
+        readOnlyHint: true,
+        untrustedContentHint: true,
+      },
+      async execute() {
+        return readCustomCss(browser);
+      },
+    },
+    { signal: controller.signal },
+  );
+
+  await modelContext.registerTool(
+    {
+      name: "read_code_injection",
+      title: "Read Squarespace Code Injection",
+      description:
+        "Read one saved Squarespace Code Injection area or the current page code blocks. This tool can return private site code. It does not change or save anything.",
+      inputSchema: READ_CODE_INJECTION_SCHEMA,
+      annotations: {
+        readOnlyHint: true,
+        untrustedContentHint: true,
+      },
+      async execute(input) {
+        return readCodeInjection(browser, input);
       },
     },
     { signal: controller.signal },

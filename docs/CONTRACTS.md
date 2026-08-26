@@ -36,6 +36,32 @@ The clean HTML removes scripts and styles and is limited to 20,000 characters. V
 
 Side effects: none.
 
+## `read_custom_css`
+
+Purpose: let ChatGPT see existing CSS before it proposes new CSS.
+
+Inputs: none.
+
+When the Custom CSS editor is open, the tool returns the current textarea value, including unsaved text. On other editor pages, it reads the saved CSS from Squarespace’s internal `GetTemplateCustomCss` endpoint.
+
+Success output includes `source`, `css`, and the visible Squarespace CSS error when one exists. CSS is limited to 100,000 characters.
+
+Side effects: none. This tool can return private site code.
+
+## `read_code_injection`
+
+Purpose: let ChatGPT see existing injected code before it proposes a component or style.
+
+Input:
+
+- `location`: `header`, `footer`, `page`, `lock-page`, or `post-item`.
+
+The `page` option reads code blocks from the active preview. Other options read Squarespace’s internal `GetInjectionSettings` endpoint.
+
+Success output includes the location, code, and detected `html`, `script`, or `mixed` type. Code is limited to 100,000 characters.
+
+Side effects: none. This tool can return private site code.
+
 ## `preview_css`
 
 Purpose: let ChatGPT show a proposed design inside the active Squarespace preview before the user saves any code.

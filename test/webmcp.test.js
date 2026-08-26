@@ -73,6 +73,20 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
     AbortController,
     console,
     location: { href: "https://everything-testing.squarespace.com/config/" },
+    fetch: async (url) => {
+      if (String(url).endsWith("/api/template/GetTemplateCustomCss")) {
+        return Response.json({ css: ".site-title { letter-spacing: 0.1em; }" });
+      }
+      if (String(url).endsWith("/api/config/GetInjectionSettings")) {
+        return Response.json({
+          header: "<meta name=\"theme-color\" content=\"#fff\">",
+          footer: "<script src=\"/site.js\"></script>",
+          lockPage: "",
+          postItem: "",
+        });
+      }
+      return new Response(null, { status: 404 });
+    },
     document: {
       title: "Blank Test Page — Everything Testing",
       modelContext: {
@@ -93,11 +107,20 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
 
   assert.deepEqual(
     registrations.map(({ tool }) => tool.name),
-    ["get_editor_context", "inspect_target", "preview_css", "clear_preview"],
+    [
+      "get_editor_context",
+      "inspect_target",
+      "read_custom_css",
+      "read_code_injection",
+      "preview_css",
+      "clear_preview",
+    ],
   );
   assert.equal(registrations[0].tool.annotations.readOnlyHint, true);
   assert.equal(registrations[1].tool.annotations.readOnlyHint, true);
-  assert.equal(registrations[2].tool.annotations.readOnlyHint, false);
+  assert.equal(registrations[2].tool.annotations.readOnlyHint, true);
+  assert.equal(registrations[3].tool.annotations.readOnlyHint, true);
+  assert.equal(registrations[4].tool.annotations.readOnlyHint, false);
 
   const result = await registrations[0].tool.execute({});
 
@@ -169,7 +192,21 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
   assert.match(inspection.target.html, /<h2>Our process<\/h2>/);
   assert.doesNotMatch(inspection.target.html, /\.hidden/);
 
-  const previewResult = await registrations[2].tool.execute({
+  assert.deepEqual(await registrations[2].tool.execute({}), {
+    source: "saved",
+    css: ".site-title { letter-spacing: 0.1em; }",
+    error: null,
+  });
+  assert.deepEqual(
+    await registrations[3].tool.execute({ location: "header" }),
+    {
+      location: "header",
+      code: '<meta name="theme-color" content="#fff">',
+      type: "html",
+    },
+  );
+
+  const previewResult = await registrations[4].tool.execute({
     css: "#block-heading { color: rebeccapurple; }",
   });
   assert.deepEqual(previewResult, {
@@ -183,9 +220,31 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
     "#block-heading { color: rebeccapurple; }",
   );
 
-  const clearResult = await registrations[3].tool.execute({});
+  const clearResult = await registrations[5].tool.execute({});
   assert.deepEqual(clearResult, { cleared: true });
   assert.equal(previewDocument.querySelector("#wills-toolkit-mcp-preview"), null);
+});
+
+test("a public Squarespace page does not register editor tools", async () => {
+  const registrations = [];
+  const browser = {
+    AbortController,
+    console,
+    location: { href: "https://everything-testing.squarespace.com/team" },
+    document: {
+      modelContext: {
+        async registerTool(tool) {
+          registrations.push(tool);
+        },
+      },
+      querySelector() {
+        return null;
+      },
+    },
+  };
+
+  assert.equal(await registerWebMCPTools(browser), false);
+  assert.deepEqual(registrations, []);
 });
 
 test("temporary CSS rejects empty and network-loading styles", async () => {
