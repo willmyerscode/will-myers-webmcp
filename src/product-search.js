@@ -1,4 +1,5 @@
 import { LIMITS } from "./contracts.js";
+import { htmlToText } from "./text.js";
 
 const STOP_WORDS = new Set([
   "a",
@@ -13,18 +14,6 @@ const STOP_WORDS = new Set([
   "to",
   "with",
 ]);
-
-function htmlToText(value = "") {
-  return value
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function tokenizeSearchText(value) {
   return value

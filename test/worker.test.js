@@ -8,6 +8,18 @@ import {
 
 const endpoint = "https://will-myers-webmcp.otis.solutions/api/products";
 
+class MemoryCache {
+  response = null;
+
+  async match() {
+    return this.response?.clone() || undefined;
+  }
+
+  async put(_key, response) {
+    this.response = response.clone();
+  }
+}
+
 test("the product API stays unavailable until its Squarespace key exists", async () => {
   const response = await handleRequest(new Request(endpoint), {}, async () => {
     throw new Error("Squarespace must not be called");
@@ -30,10 +42,10 @@ test("the product API reads every Squarespace page and returns visible products"
           name: "Step Flow Timeline",
           description: "<p>Turn a list section into a timeline.</p>",
           isVisible: true,
-          url: "https://www.will-myers.com/products/p/step-flow-timeline",
+          url: "/products/p/step-flow-timeline",
           tags: ["Plugin"],
           pricing: {
-            basePrice: { currency: { currencyCode: "USD" }, value: 25 },
+            basePrice: { currency: "USD", value: 25 },
             onSale: false,
           },
         },
@@ -57,9 +69,9 @@ test("the product API reads every Squarespace page and returns visible products"
           variants: [
             {
               pricing: {
-                basePrice: { currency: { currencyCode: "USD" }, value: 30 },
+                basePrice: { currency: "USD", value: 30 },
                 onSale: true,
-                salePrice: { currency: { currencyCode: "USD" }, value: 20 },
+                salePrice: { currency: "USD", value: 20 },
               },
             },
           ],
@@ -102,6 +114,10 @@ test("the product API reads every Squarespace page and returns visible products"
     ["visible", "sale"],
   );
   assert.deepEqual(body.products[0].price, { currency: "USD", value: "25" });
+  assert.equal(
+    body.products[0].url,
+    "https://www.will-myers.com/products/p/step-flow-timeline",
+  );
   assert.deepEqual(body.products[1].price, { currency: "USD", value: "20" });
   assert.equal(body.products[1].onSale, true);
 });
@@ -114,6 +130,83 @@ test("the product API does not send CORS access to another website", async () =>
   );
 
   assert.equal(response.headers.has("access-control-allow-origin"), false);
+});
+
+test("the product API uses its Cloudflare cache before Squarespace", async () => {
+  const cache = new MemoryCache();
+  let requests = 0;
+  const fetchSquarespace = async () => {
+    requests += 1;
+    return Response.json({
+      pagination: { hasNextPage: false },
+      products: [
+        {
+          id: "menu",
+          name: "Mega Menu",
+          isVisible: true,
+          url: "/products/p/mega-menu",
+        },
+      ],
+    });
+  };
+
+  const options = { cache, now: () => 1_000 };
+  const first = await handleRequest(
+    new Request(endpoint),
+    { SQUARESPACE_API_KEY: "private-test-key" },
+    fetchSquarespace,
+    options,
+  );
+  const second = await handleRequest(
+    new Request(endpoint),
+    { SQUARESPACE_API_KEY: "private-test-key" },
+    fetchSquarespace,
+    options,
+  );
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(requests, 1);
+});
+
+test("the product API limits a Squarespace refresh when no cache exists", async () => {
+  let fetched = false;
+  const response = await handleRequest(
+    new Request(endpoint),
+    {
+      SQUARESPACE_API_KEY: "private-test-key",
+      PRODUCT_REFRESH_LIMITER: {
+        async limit() {
+          return { success: false };
+        },
+      },
+    },
+    async () => {
+      fetched = true;
+      throw new Error("Squarespace must not be called");
+    },
+  );
+
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "60");
+  assert.equal(fetched, false);
+});
+
+test("the product API retries one temporary Squarespace failure", async () => {
+  let requests = 0;
+  const response = await handleRequest(
+    new Request(endpoint),
+    { SQUARESPACE_API_KEY: "private-test-key" },
+    async () => {
+      requests += 1;
+      if (requests === 1) return new Response(null, { status: 503 });
+      return Response.json({ pagination: { hasNextPage: false }, products: [] });
+    },
+    { sleep: async () => {} },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(requests, 2);
 });
 
 test("Squarespace products without safe public fields are not published", () => {
