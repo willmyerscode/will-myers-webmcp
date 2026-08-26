@@ -24,10 +24,11 @@ npm run build
 10. Call `preview_css` with CSS that targets that section or block ID.
 11. Confirm that the preview changes and that Squarespace does not show a saved change.
 12. Call `clear_preview` and confirm that the temporary change disappears.
-13. Before testing `add_text_block`, show the user the exact site, page, section, and text. Get clear approval.
-14. Call `add_text_block`. Confirm that it returns `saved: true` and a new block ID.
-15. Reload the editor. Confirm that the new paragraph appears and remains after another reload.
-16. Open a public site page outside the Editor. Confirm that no editor tools register.
+13. Exit page editing mode so the normal page preview shows the Edit button.
+14. Before testing `add_text_block`, show the user the exact site, page, section, and text. Get clear approval.
+15. Call `add_text_block` without clicking Edit. Confirm that it returns `saved: true` and a new block ID.
+16. Reload the editor. Confirm that the new paragraph appears and remains after another reload.
+17. Open a public site page outside the Editor. Confirm that no editor tools register.
 
 ## Normal browser fallback
 
