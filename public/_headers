@@ -1,5 +1,5 @@
 /webmcp.js
-  Cache-Control: public, max-age=300
+  Cache-Control: public, max-age=60, must-revalidate
 
 /webmcp.js.map
   Cache-Control: public, max-age=300
