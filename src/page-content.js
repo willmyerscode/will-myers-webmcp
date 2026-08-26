@@ -3,6 +3,7 @@ import { TOOL_LIMITS } from "./limits.js";
 import { getPageModel, savePageModel } from "./squarespace-page-api.js";
 
 const FLUID_ENGINE_COMPONENT_TYPE = 1337;
+const TEXT_BLOCK_ROWS = 2;
 
 function escapeHtml(value) {
   return value
@@ -134,8 +135,8 @@ export async function addTextBlock(browser, input) {
   const mobile = context.gridSettings.breakpointSettings.mobile;
   const desktopStartY = Number(desktop.rows) || 0;
   const mobileStartY = Number(mobile.rows) || 0;
-  const desktopEndY = desktopStartY + 3;
-  const mobileEndY = mobileStartY + 3;
+  const desktopEndY = desktopStartY + TEXT_BLOCK_ROWS;
+  const mobileEndY = mobileStartY + TEXT_BLOCK_ROWS;
   const blockId = randomHex(browser);
   const zIndex = maxZIndex(gridContents) + 1;
   const html = `<p style="white-space:pre-wrap;">${escapeHtml(text)}</p>`;
