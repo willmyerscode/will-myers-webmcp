@@ -176,8 +176,8 @@ export async function addTextBlock(browser, input) {
     },
   });
 
-  desktop.rows = desktopEndY;
-  mobile.rows = mobileEndY;
+  desktop.rows = desktopEndY + 1;
+  mobile.rows = mobileEndY + 1;
   const estimated = section.childrenEstimatedLayouts || (section.childrenEstimatedLayouts = []);
   estimated.push({
     refId: blockId,

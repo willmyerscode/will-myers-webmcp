@@ -258,11 +258,11 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
   );
   assert.equal(
     pageModel.regions[0].sections[0].fluidEngineContext.gridSettings.breakpointSettings.desktop.rows,
-    10,
+    11,
   );
   assert.equal(
     pageModel.regions[0].sections[0].fluidEngineContext.gridSettings.breakpointSettings.mobile.rows,
-    5,
+    6,
   );
   assert.equal(
     pageModel.regions[0].sections[0].fluidEngineContext.gridContents[0].content.value.value.html,
