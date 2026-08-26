@@ -12,7 +12,7 @@ A WebMCP tool layer for people who use ChatGPT while they work in the Squarespac
 - `preview_css` applies temporary CSS to the active page preview.
 - `clear_preview` removes the temporary CSS.
 
-Only `add_text_block` saves a site change. The tool description tells ChatGPT to show the user the exact page, section, and text before it runs. The CSS preview disappears when the page reloads.
+Only `add_text_block` saves a site change. It works from the normal page preview and from a clean page editor. It refuses to run when the editor has unsaved manual work. The tool description tells ChatGPT to show the user the exact page, section, and text before it runs. The CSS preview disappears when the page reloads.
 
 ## How the editor bridge works
 

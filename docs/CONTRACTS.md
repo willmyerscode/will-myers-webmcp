@@ -90,7 +90,7 @@ Inputs:
 - `text: string` — required plain text, 1–5,000 characters.
 - `section_id: string` — optional Fluid Engine section ID. When omitted, the tool uses the last Fluid Engine section on the page.
 
-The tool refuses to run when the editor has unsaved manual changes. It reads the current page model, puts the new block after the existing section rows on desktop and mobile, and saves the full model through Squarespace’s authenticated page API. It then reads the page again and confirms the new block ID, type, definition, and exact escaped text. The fresh read is the proof that Squarespace kept the block, even when the save response has an error status.
+The tool works from the normal page preview and from a clean page editor. It refuses to run when an open editor has unsaved manual changes. It reads the current page model, puts the new block after the existing section rows on desktop and mobile, and saves the full model through Squarespace’s authenticated page API. It then reads the page again and confirms the new block ID, type, definition, and exact escaped text. The fresh read is the proof that Squarespace kept the block, even when the save response has an error status.
 
 Success output includes `saved`, `pageId`, `sectionId`, `blockId`, `text`, and a note that the editor must reload before a later manual page edit.
 

@@ -3,7 +3,7 @@ import { TOOL_LIMITS } from "./limits.js";
 import { getPageModel, savePageModel } from "./squarespace-page-api.js";
 
 const FLUID_ENGINE_COMPONENT_TYPE = 1337;
-const TEXT_BLOCK_ROWS = 2;
+const TEXT_BLOCK_ROWS = 1;
 
 function escapeHtml(value) {
   return value
@@ -94,20 +94,25 @@ function findFluidSection(pageModel, sectionId) {
   return section;
 }
 
-function assertEditorIsClean(browser) {
+function assertEditorCanSave(browser) {
   const saveButton = browser.document?.querySelector?.(
     '[data-test="frameToolbarSave"]',
   );
-  if (!saveButton) {
-    throw new Error(
-      "The page editor is not ready. Click Edit, wait for the Save button, then retry.",
-    );
-  }
-  if (!saveButton.disabled) {
+  if (saveButton && !saveButton.disabled) {
     throw new Error(
       "The Squarespace editor has unsaved manual changes. Save or discard them before this tool runs.",
     );
   }
+  if (saveButton?.disabled) return;
+
+  const editButton = browser.document?.querySelector?.(
+    '[data-test="frameToolbarEdit"]',
+  );
+  if (editButton) return;
+
+  throw new Error(
+    "The Squarespace page preview is not ready. Wait for the Edit button, then retry.",
+  );
 }
 
 /** @param {any} browser @param {{ text?: unknown, section_id?: unknown }} input */
@@ -117,7 +122,7 @@ export async function addTextBlock(browser, input) {
   if (text.length > TOOL_LIMITS.textBlockCharacters) {
     throw new Error(`Text must be ${TOOL_LIMITS.textBlockCharacters} characters or fewer.`);
   }
-  assertEditorIsClean(browser);
+  assertEditorCanSave(browser);
 
   const pageId = getEditorContext(browser).page.id;
   if (!pageId) throw new Error("The current Squarespace page ID is not available.");
@@ -187,7 +192,7 @@ export async function addTextBlock(browser, input) {
     ],
   });
 
-  assertEditorIsClean(browser);
+  assertEditorCanSave(browser);
   let saveResponse = null;
   let saveError = null;
   try {

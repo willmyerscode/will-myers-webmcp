@@ -130,8 +130,8 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
         if (selector === "#sqs-site-frame") {
           return { contentDocument: previewDocument };
         }
-        if (selector === '[data-test="frameToolbarSave"]') {
-          return { disabled: true };
+        if (selector === '[data-test="frameToolbarEdit"]') {
+          return {};
         }
         return null;
       },
@@ -258,11 +258,11 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
   );
   assert.equal(
     pageModel.regions[0].sections[0].fluidEngineContext.gridSettings.breakpointSettings.desktop.rows,
-    11,
+    10,
   );
   assert.equal(
     pageModel.regions[0].sections[0].fluidEngineContext.gridSettings.breakpointSettings.mobile.rows,
-    6,
+    5,
   );
   assert.equal(
     pageModel.regions[0].sections[0].fluidEngineContext.gridContents[0].content.value.value.html,
