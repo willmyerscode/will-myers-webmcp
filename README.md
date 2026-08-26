@@ -2,16 +2,17 @@
 
 A WebMCP tool layer for people who use ChatGPT while they work in the Squarespace Editor.
 
-## Current tool
+## Current tools
 
 - `get_editor_context` reads the active site, page, template, colors, fonts, sections, blocks, and visible block text.
 - `inspect_target` reads the HTML, size, and important styles for one selected element.
 - `read_custom_css` reads current or saved Squarespace Custom CSS.
 - `read_code_injection` reads one Code Injection area or the current page code blocks.
+- `add_text_block` adds a paragraph at the bottom of a Fluid Engine section and saves the page.
 - `preview_css` applies temporary CSS to the active page preview.
 - `clear_preview` removes the temporary CSS.
 
-No tool saves or changes the Squarespace site. The CSS preview disappears when the page reloads.
+Only `add_text_block` saves a site change. The tool description tells ChatGPT to show the user the exact page, section, and text before it runs. The CSS preview disappears when the page reloads.
 
 ## How the editor bridge works
 

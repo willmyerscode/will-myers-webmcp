@@ -41,6 +41,27 @@ export const READ_CODE_INJECTION_SCHEMA = {
   additionalProperties: false,
 };
 
+export const ADD_TEXT_BLOCK_SCHEMA = {
+  type: "object",
+  properties: {
+    text: {
+      type: "string",
+      minLength: 1,
+      maxLength: TOOL_LIMITS.textBlockCharacters,
+      description: "Plain text for the new paragraph block.",
+    },
+    section_id: {
+      type: "string",
+      minLength: 1,
+      maxLength: 200,
+      description:
+        "Optional Fluid Engine section ID from get_editor_context. If omitted, the last Fluid Engine section is used.",
+    },
+  },
+  required: ["text"],
+  additionalProperties: false,
+};
+
 export const PREVIEW_CSS_SCHEMA = {
   type: "object",
   properties: {

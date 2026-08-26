@@ -1,4 +1,5 @@
 import {
+  ADD_TEXT_BLOCK_SCHEMA,
   CLEAR_PREVIEW_SCHEMA,
   GET_EDITOR_CONTEXT_SCHEMA,
   INSPECT_TARGET_SCHEMA,
@@ -9,9 +10,10 @@ import {
 import { getEditorContext } from "./editor-context.js";
 import { clearPreview, previewCss } from "./style-preview.js";
 import { inspectTarget } from "./target-inspection.js";
+import { addTextBlock } from "./page-content.js";
 import { readCodeInjection, readCustomCss } from "./site-code.js";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
 
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {
@@ -128,6 +130,26 @@ export async function registerWebMCPTools(browser = window) {
       },
       async execute(input) {
         return readCodeInjection(browser, input);
+      },
+    },
+    { signal: controller.signal },
+  );
+
+  await modelContext.registerTool(
+    {
+      name: "add_text_block",
+      title: "Add a Squarespace text block",
+      description:
+        "Add a paragraph text block at the bottom of a Fluid Engine section and save the page now. This changes the live Squarespace page. Use get_editor_context first, show the exact page, section, and text to the user, and get approval before calling this tool.",
+      inputSchema: ADD_TEXT_BLOCK_SCHEMA,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        untrustedContentHint: false,
+      },
+      async execute(input) {
+        return addTextBlock(browser, input);
       },
     },
     { signal: controller.signal },

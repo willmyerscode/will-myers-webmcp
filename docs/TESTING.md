@@ -14,7 +14,7 @@ npm run build
 
 1. Sign in to the test Squarespace site inside the ChatGPT browser.
 2. Open a page in the Squarespace Editor.
-3. Confirm that `get_editor_context`, `inspect_target`, `read_custom_css`, `read_code_injection`, `preview_css`, and `clear_preview` are available on the top `/config/` page.
+3. Confirm that `get_editor_context`, `inspect_target`, `read_custom_css`, `read_code_injection`, `add_text_block`, `preview_css`, and `clear_preview` are available on the top `/config/` page.
 4. Call the tool with `{}`.
 5. Confirm that it returns the current site ID, page ID, template version, colors, fonts, sections, and blocks.
 6. Change to another page and call the tool again. Confirm that the page data changes.
@@ -24,7 +24,10 @@ npm run build
 10. Call `preview_css` with CSS that targets that section or block ID.
 11. Confirm that the preview changes and that Squarespace does not show a saved change.
 12. Call `clear_preview` and confirm that the temporary change disappears.
-13. Open a public site page outside the Editor. Confirm that no editor tools register.
+13. Before testing `add_text_block`, show the user the exact site, page, section, and text. Get clear approval.
+14. Call `add_text_block`. Confirm that it returns `saved: true` and a new block ID.
+15. Reload the editor. Confirm that the new paragraph appears and remains after another reload.
+16. Open a public site page outside the Editor. Confirm that no editor tools register.
 
 ## Normal browser fallback
 
@@ -34,4 +37,4 @@ npm run build
 
 ## Rollback
 
-Remove the `webmcp.js` script tag from footer code injection. The editor bridge has no database and saves no Squarespace data.
+Remove the `webmcp.js` script tag from footer code injection. The bridge has no database. Removing the script does not remove page blocks that `add_text_block` already saved.

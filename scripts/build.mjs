@@ -14,7 +14,7 @@ await build({
   target: ["es2022"],
   legalComments: "none",
   banner: {
-    js: "/* Will’s Toolkit MCP v0.2.0 | https://github.com/willmyerscode/will-myers-webmcp */",
+    js: "/* Will’s Toolkit MCP v0.3.0 | https://github.com/willmyerscode/will-myers-webmcp */",
   },
 });
 

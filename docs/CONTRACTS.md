@@ -81,6 +81,23 @@ Success output:
 
 Side effect: replaces one temporary `<style>` element in the preview frame. Reloading the page removes it.
 
+## `add_text_block`
+
+Purpose: add a plain paragraph to an existing Fluid Engine section.
+
+Inputs:
+
+- `text: string` — required plain text, 1–5,000 characters.
+- `section_id: string` — optional Fluid Engine section ID. When omitted, the tool uses the last Fluid Engine section on the page.
+
+The tool refuses to run when the editor has unsaved manual changes. It reads the current page model, puts the new block after the existing section rows on desktop and mobile, and saves the full model through Squarespace’s authenticated page API. It then reads the page again and confirms the new block ID, type, definition, and exact escaped text. The fresh read is the proof that Squarespace kept the block, even when the save response has an error status.
+
+Success output includes `saved`, `pageId`, `sectionId`, `blockId`, `text`, and a note that the editor must reload before a later manual page edit.
+
+Side effect: saves a live page-content change. The tool is not read-only and is not idempotent. ChatGPT must show the exact page, section, and text and get user approval before each call.
+
+Expected failures include a missing sign-in token, a missing page or section, a section that is not Fluid Engine, a rejected Squarespace save, or a fresh read that does not contain the new block.
+
 ## `clear_preview`
 
 Purpose: remove the CSS added by `preview_css`.

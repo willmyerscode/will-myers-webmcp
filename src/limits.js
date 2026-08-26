@@ -5,6 +5,7 @@ export const TOOL_LIMITS = Object.freeze({
   blockTextCharacters: 240,
   inspectionHtmlCharacters: 20_000,
   inspectionTextCharacters: 2_000,
+  textBlockCharacters: 5_000,
   sections: 50,
   blocksPerSection: 100,
 });

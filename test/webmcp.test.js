@@ -69,11 +69,35 @@ function makePreviewDocument() {
 test("the Squarespace Editor registers a read-only editor context tool", async () => {
   const registrations = [];
   const previewDocument = makePreviewDocument();
+  let pageModel = {
+    regions: [
+      {
+        id: "region-1",
+        sections: [
+          {
+            id: "section-1",
+            sectionName: "FLUID_ENGINE",
+            fluidEngineContext: {
+              gridSettings: {
+                breakpointSettings: {
+                  desktop: { rows: 8, columns: 24 },
+                  mobile: { rows: 3, columns: 8 },
+                },
+              },
+              gridContents: [],
+            },
+            childrenEstimatedLayouts: [],
+          },
+        ],
+      },
+    ],
+  };
   const browser = {
     AbortController,
     console,
+    crypto: globalThis.crypto,
     location: { href: "https://everything-testing.squarespace.com/config/" },
-    fetch: async (url) => {
+    fetch: async (url, options = {}) => {
       if (String(url).endsWith("/api/template/GetTemplateCustomCss")) {
         return Response.json({ css: ".site-title { letter-spacing: 0.1em; }" });
       }
@@ -85,9 +109,17 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
           postItem: "",
         });
       }
+      if (String(url).endsWith("/api/pages/by-collection-id/page-456")) {
+        if (options.method === "PUT") {
+          pageModel = JSON.parse(options.body);
+          throw new TypeError("connection lost after save");
+        }
+        return Response.json(pageModel);
+      }
       return new Response(null, { status: 404 });
     },
     document: {
+      cookie: "crumb=test-crumb",
       title: "Blank Test Page — Everything Testing",
       modelContext: {
         async registerTool(tool, options) {
@@ -97,6 +129,9 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
       querySelector(selector) {
         if (selector === "#sqs-site-frame") {
           return { contentDocument: previewDocument };
+        }
+        if (selector === '[data-test="frameToolbarSave"]') {
+          return { disabled: true };
         }
         return null;
       },
@@ -112,6 +147,7 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
       "inspect_target",
       "read_custom_css",
       "read_code_injection",
+      "add_text_block",
       "preview_css",
       "clear_preview",
     ],
@@ -121,6 +157,7 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
   assert.equal(registrations[2].tool.annotations.readOnlyHint, true);
   assert.equal(registrations[3].tool.annotations.readOnlyHint, true);
   assert.equal(registrations[4].tool.annotations.readOnlyHint, false);
+  assert.equal(registrations[5].tool.annotations.readOnlyHint, false);
 
   const result = await registrations[0].tool.execute({});
 
@@ -206,7 +243,25 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
     },
   );
 
-  const previewResult = await registrations[4].tool.execute({
+  const addResult = await registrations[4].tool.execute({
+    text: "Hello from Will's Toolkit MCP.",
+  });
+  assert.equal(addResult.saved, true);
+  assert.equal(addResult.pageId, "page-456");
+  assert.equal(addResult.sectionId, "section-1");
+  assert.equal(addResult.text, "Hello from Will's Toolkit MCP.");
+  assert.equal(addResult.saveStatus, null);
+  assert.match(addResult.blockId, /^[a-f0-9]{24}$/);
+  assert.equal(
+    pageModel.regions[0].sections[0].fluidEngineContext.gridContents.length,
+    1,
+  );
+  assert.equal(
+    pageModel.regions[0].sections[0].fluidEngineContext.gridContents[0].content.value.value.html,
+    '<p style="white-space:pre-wrap;">Hello from Will&#39;s Toolkit MCP.</p>',
+  );
+
+  const previewResult = await registrations[5].tool.execute({
     css: "#block-heading { color: rebeccapurple; }",
   });
   assert.deepEqual(previewResult, {
@@ -220,7 +275,7 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
     "#block-heading { color: rebeccapurple; }",
   );
 
-  const clearResult = await registrations[5].tool.execute({});
+  const clearResult = await registrations[6].tool.execute({});
   assert.deepEqual(clearResult, { cleared: true });
   assert.equal(previewDocument.querySelector("#wills-toolkit-mcp-preview"), null);
 });
