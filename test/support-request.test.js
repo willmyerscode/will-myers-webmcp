@@ -68,6 +68,22 @@ test("start_support_request rejects unsafe or incomplete input", () => {
   );
 });
 
+test("start_support_request rejects non-text values for text fields", () => {
+  for (const [field, value] of [
+    ["first_name", 42],
+    ["last_name", false],
+    ["email", {}],
+    ["product_or_tutorial_url", 42],
+    ["website_url", []],
+    ["message", ["help"]],
+  ]) {
+    assert.throws(
+      () => validateSupportRequest({ ...validRequest, [field]: value }),
+      /must be text/i,
+    );
+  }
+});
+
 test("the contact-page draft fills safe fields but never confirms or submits", () => {
   const { document } = parseHTML(`
     <form class="react-form-contents">

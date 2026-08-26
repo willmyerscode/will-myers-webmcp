@@ -38,10 +38,20 @@ export function normalizeCatalog(response, siteOrigin) {
   if (!response || !Array.isArray(response.items)) {
     throw new Error("The public product catalog did not contain an item list.");
   }
+  if (response.items.length === 0) {
+    throw new Error("The public product catalog did not contain any items.");
+  }
 
-  return response.items
-    .filter((item) => item && item.id && item.title && item.fullUrl)
-    .map((item) => ({
+  const changedItemIndex = response.items.findIndex(
+    (item) => !item || !item.id || !item.title || !item.fullUrl,
+  );
+  if (changedItemIndex >= 0) {
+    throw new Error(
+      `Product item ${changedItemIndex + 1} is missing required public fields.`,
+    );
+  }
+
+  return response.items.map((item) => ({
       id: String(item.id),
       title: String(item.title).trim(),
       summary: htmlToText(item.excerpt || ""),
@@ -123,7 +133,14 @@ export async function findProducts(
   input,
   { fetch: fetchCatalog = fetch, signal, siteOrigin = "https://www.will-myers.com" } = {},
 ) {
-  const query = String(input?.query || "").trim();
+  if (input?.query === undefined || input?.query === null) {
+    throw new Error("A product search query is required.");
+  }
+  if (typeof input.query !== "string") {
+    throw new Error("The product search query must be text.");
+  }
+
+  const query = input.query.trim();
   if (!query) throw new Error("A product search query is required.");
   if (query.length > LIMITS.productQuery) {
     throw new Error(`The product search query must be ${LIMITS.productQuery} characters or fewer.`);

@@ -93,3 +93,35 @@ test("find_products rejects max_results values outside its contract", async () =
     assert.equal(fetched, false);
   }
 });
+
+test("find_products rejects non-text queries before catalog access", async () => {
+  for (const query of [42, true, {}, []]) {
+    let fetched = false;
+
+    await assert.rejects(
+      () =>
+        findProducts(
+          { query },
+          {
+            fetch: async () => {
+              fetched = true;
+              throw new Error("fetch must not run");
+            },
+          },
+        ),
+      /query must be text/i,
+    );
+    assert.equal(fetched, false);
+  }
+});
+
+test("find_products reports a changed required catalog field", () => {
+  assert.throws(
+    () =>
+      normalizeCatalog(
+        { items: [{ id: "changed", title: "Changed product" }] },
+        "https://www.will-myers.com",
+      ),
+    /required public fields/i,
+  );
+});

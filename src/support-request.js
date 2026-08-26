@@ -3,7 +3,8 @@ import { LIMITS } from "./contracts.js";
 export const PENDING_SUPPORT_KEY = "will-myers:webmcp:pending-support-request";
 
 function requiredText(value, field, maxLength) {
-  const text = String(value || "").trim();
+  if (typeof value !== "string") throw new Error(`${field} must be text.`);
+  const text = value.trim();
   if (!text) throw new Error(`${field} is required.`);
   if (text.length > maxLength) {
     throw new Error(`${field} must be ${maxLength} characters or fewer.`);
@@ -11,8 +12,10 @@ function requiredText(value, field, maxLength) {
   return text;
 }
 
-function optionalText(value, maxLength) {
-  const text = String(value || "").trim();
+function optionalText(value, field, maxLength) {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") throw new Error(`${field} must be text.`);
+  const text = value.trim();
   if (text.length > maxLength) {
     throw new Error(`Optional text must be ${maxLength} characters or fewer.`);
   }
@@ -22,7 +25,7 @@ function optionalText(value, maxLength) {
 function webUrl(value, field, required = true) {
   const text = required
     ? requiredText(value, field, LIMITS.url)
-    : optionalText(value, LIMITS.url);
+    : optionalText(value, field, LIMITS.url);
   if (!text) return "";
 
   let url;
