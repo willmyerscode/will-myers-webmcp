@@ -1,0 +1,18 @@
+{
+  "name": "will-myers-webmcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --test",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9",
+    "linkedom": "^0.18.12",
+    "typescript": "^5.9.2",
+    "wrangler": "^4.32.0"
+  }
+}
