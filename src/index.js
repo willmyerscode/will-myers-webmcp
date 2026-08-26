@@ -1,3 +1,4 @@
+import { FIND_PRODUCTS_SCHEMA, START_SUPPORT_SCHEMA } from "./contracts.js";
 import { findProducts } from "./product-search.js";
 import {
   applyPendingSupportRequest,
@@ -5,73 +6,6 @@ import {
 } from "./support-request.js";
 
 export const VERSION = "0.1.0";
-
-const FIND_PRODUCTS_SCHEMA = {
-  type: "object",
-  properties: {
-    query: {
-      type: "string",
-      minLength: 1,
-      maxLength: 200,
-      description:
-        "Product name, website feature, or design goal. Examples: mega menu, image slider, timeline.",
-    },
-    max_results: {
-      type: "integer",
-      minimum: 1,
-      maximum: 10,
-      default: 5,
-      description: "Maximum number of matching products to return.",
-    },
-  },
-  required: ["query"],
-  additionalProperties: false,
-};
-
-const START_SUPPORT_SCHEMA = {
-  type: "object",
-  properties: {
-    first_name: { type: "string", minLength: 1, maxLength: 100 },
-    last_name: { type: "string", minLength: 1, maxLength: 100 },
-    email: {
-      type: "string",
-      format: "email",
-      maxLength: 254,
-      description: "Reply address for the support request.",
-    },
-    is_code_curious_member: {
-      type: "boolean",
-      description: "Whether the visitor is a Code Curious member.",
-    },
-    product_or_tutorial_url: {
-      type: "string",
-      format: "uri",
-      maxLength: 2048,
-      description: "Public Will Myers product, tutorial, article, or code-snippet URL.",
-    },
-    website_url: {
-      type: "string",
-      format: "uri",
-      maxLength: 2048,
-      description: "Optional public or password-protected page that shows the problem.",
-    },
-    message: {
-      type: "string",
-      minLength: 1,
-      maxLength: 5000,
-      description: "A clear description of the problem and the expected result.",
-    },
-  },
-  required: [
-    "first_name",
-    "last_name",
-    "email",
-    "is_code_curious_member",
-    "product_or_tutorial_url",
-    "message",
-  ],
-  additionalProperties: false,
-};
 
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {

@@ -6,19 +6,30 @@ Purpose: help a visitor find a relevant Will Myers product without buying it.
 
 Inputs:
 
-- `query` — required text, 1–200 characters.
-- `max_results` — optional integer, 1–10, default 5.
+- `query: string` — required after trimming, 1–200 characters.
+- `max_results?: integer` — optional, 1–10, default 5. Strings, fractions, zero, and values above 10 are errors.
 
-Output:
+Success output:
 
-- The original query.
-- Match count.
-- Product ID, title, summary, current public price, sale state, license type, and public URL.
-- A short next-step note.
+- `query: string` — the trimmed query.
+- `count: number` — the number of returned matches.
+- `products: Product[]` — up to `max_results` matches.
+- `note: string` — the next step or a no-match message.
+
+Each `Product` has:
+
+- `id: string`
+- `title: string`
+- `summary: string` — plain text made from the public HTML excerpt.
+- `price: { currency: string, value: string } | null`
+- `onSale: boolean`
+- `url: string` — an absolute public product URL.
 
 Side effects: none. The tool reads `/products?format=json` from the current site.
 
-Failure messages cover an empty or long query, a bad catalog response, a missing item list, and no close matches.
+Mapped public source fields are `items[].id`, `title`, `excerpt`, `priceMoney.currency`, `priceMoney.value`, `onSale`, `fullUrl`, and `tags`. These were present in the live public response on August 26, 2026. The tool does not infer a license field. License words remain visible in the public product title.
+
+Failures throw a JavaScript `Error` with a short public message. Failure cases are an empty or long query, an invalid `max_results`, a failed catalog HTTP response, or a response without `items`. No close match is a successful result with `count: 0` and an empty `products` list.
 
 ## `start_support_request`
 
@@ -26,16 +37,29 @@ Purpose: prepare the current public Squarespace support form for human review.
 
 Required inputs:
 
-- `first_name`
-- `last_name`
-- `email`
-- `is_code_curious_member`
-- `product_or_tutorial_url`
-- `message`
+- `first_name: string` — 1–100 characters after trimming.
+- `last_name: string` — 1–100 characters after trimming.
+- `email: string` — 1–254 characters and a basic valid email shape.
+- `is_code_curious_member: boolean`
+- `product_or_tutorial_url: string` — an HTTP or HTTPS URL, up to 2,048 characters.
+- `message: string` — 1–5,000 characters after trimming.
 
 Optional input:
 
-- `website_url`
+- `website_url?: string` — an HTTP or HTTPS URL, up to 2,048 characters.
+
+Success output before navigation:
+
+- `status: "opening-contact-form"`
+- `contact_url: string`
+- `next_step: string`
+
+Success output on `/contact`:
+
+- `status: "ready-for-review"`
+- `contact_url: string`
+- `filled_fields: string[]`
+- `next_step: string`
 
 Side effects:
 
@@ -45,4 +69,4 @@ Side effects:
 - Does not check the admin-access confirmation.
 - Does not submit the form.
 
-Failure messages cover missing fields, invalid email or URL values, long input, and a changed or missing form field.
+Failures throw a JavaScript `Error` with a short public message. Failure cases are missing fields, wrong types, invalid email or URL values, long input, a missing form, or a changed required form field. When `/contact` reads a saved draft, it deletes the `sessionStorage` copy before it tries to fill the form. A fill failure therefore does not keep the visitor's personal draft. The normal form remains available for manual use.

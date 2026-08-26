@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeCatalog, searchProducts } from "../src/product-search.js";
+import {
+  findProducts,
+  normalizeCatalog,
+  searchProducts,
+} from "../src/product-search.js";
 
 const catalogResponse = {
   items: [
@@ -57,7 +61,6 @@ test("find_products ranks the product that best matches the visitor's words", ()
       price: { currency: "USD", value: "25.00" },
       onSale: false,
       url: "https://www.will-myers.com/products/p/step-flow-timeline",
-      license: "single-site",
     },
   ]);
 });
@@ -68,4 +71,25 @@ test("find_products prefers an exact title phrase", () => {
   const [result] = searchProducts(products, "mega menu", 1);
 
   assert.equal(result.title, "Mega Menu for Squarespace 7.1");
+});
+
+test("find_products rejects max_results values outside its contract", async () => {
+  for (const max_results of [0, 11, 2.5, "3"]) {
+    let fetched = false;
+
+    await assert.rejects(
+      () =>
+        findProducts(
+          { query: "menu", max_results },
+          {
+            fetch: async () => {
+              fetched = true;
+              throw new Error("fetch must not run");
+            },
+          },
+        ),
+      /integer from 1 through 10/i,
+    );
+    assert.equal(fetched, false);
+  }
 });

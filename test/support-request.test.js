@@ -3,6 +3,7 @@ import test from "node:test";
 import { parseHTML } from "linkedom";
 
 import {
+  applyPendingSupportRequest,
   fillSupportForm,
   PENDING_SUPPORT_KEY,
   startSupportRequest,
@@ -106,4 +107,23 @@ test("the contact-page draft fills safe fields but never confirms or submits", (
   assert.equal(Boolean(document.querySelector('.admin input[type="checkbox"]').checked), false);
   assert.equal(submitted, false);
   assert.equal(result.status, "ready-for-review");
+});
+
+test("a failed contact-page fill deletes the saved personal draft", () => {
+  const { document } = parseHTML("<main>No support form</main>");
+  const saved = new Map([[PENDING_SUPPORT_KEY, JSON.stringify(validRequest)]]);
+  const storage = {
+    getItem(key) {
+      return saved.get(key) || null;
+    },
+    removeItem(key) {
+      saved.delete(key);
+    },
+  };
+
+  assert.throws(
+    () => applyPendingSupportRequest(document, storage),
+    /support form was not found/i,
+  );
+  assert.equal(saved.has(PENDING_SUPPORT_KEY), false);
 });

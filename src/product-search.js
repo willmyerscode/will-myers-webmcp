@@ -1,3 +1,5 @@
+import { LIMITS } from "./contracts.js";
+
 const STOP_WORDS = new Set([
   "a",
   "an",
@@ -24,18 +26,12 @@ function htmlToText(value = "") {
     .trim();
 }
 
-function words(value) {
+function tokenizeSearchText(value) {
   return value
     .toLocaleLowerCase("en-US")
     .replace(/[^a-z0-9]+/g, " ")
     .split(" ")
     .filter((word) => word.length > 1 && !STOP_WORDS.has(word));
-}
-
-function licenseFor(title) {
-  return /multi[ -]?use|business license|template license/i.test(title)
-    ? "multi-use"
-    : "single-site";
 }
 
 export function normalizeCatalog(response, siteOrigin) {
@@ -58,7 +54,6 @@ export function normalizeCatalog(response, siteOrigin) {
           : null,
       onSale: Boolean(item.onSale),
       url: new URL(String(item.fullUrl), siteOrigin).href,
-      license: licenseFor(String(item.title)),
       searchText: [item.title, htmlToText(item.excerpt || ""), ...(item.tags || [])]
         .join(" ")
         .toLocaleLowerCase("en-US"),
@@ -66,10 +61,10 @@ export function normalizeCatalog(response, siteOrigin) {
 }
 
 export function searchProducts(products, query, maxResults = 5) {
-  const queryWords = words(String(query || ""));
+  const queryWords = tokenizeSearchText(String(query || ""));
   if (queryWords.length === 0) return [];
 
-  const limit = Math.min(Math.max(Number(maxResults) || 5, 1), 10);
+  const limit = validateMaxResults(maxResults);
   const queryPhrase = queryWords.join(" ");
   const wordWeights = new Map(
     queryWords.map((word) => {
@@ -85,7 +80,7 @@ export function searchProducts(products, query, maxResults = 5) {
   return products
     .map((product, index) => {
       const title = product.title.toLocaleLowerCase("en-US");
-      const titlePhrase = words(product.title).join(" ");
+      const titlePhrase = tokenizeSearchText(product.title).join(" ");
       const wordScore = queryWords.reduce((total, word) => {
         const weight = wordWeights.get(word) || 1;
         if (title === word) return total + 12 * weight;
@@ -103,6 +98,19 @@ export function searchProducts(products, query, maxResults = 5) {
     .map(({ product: { searchText: _, ...result } }) => result);
 }
 
+function validateMaxResults(value) {
+  if (
+    !Number.isInteger(value) ||
+    value < LIMITS.maxResultsMin ||
+    value > LIMITS.maxResultsMax
+  ) {
+    throw new Error(
+      `max_results must be an integer from ${LIMITS.maxResultsMin} through ${LIMITS.maxResultsMax}.`,
+    );
+  }
+  return value;
+}
+
 /**
  * @param {{ query?: unknown, max_results?: unknown }} input
  * @param {{
@@ -117,9 +125,11 @@ export async function findProducts(
 ) {
   const query = String(input?.query || "").trim();
   if (!query) throw new Error("A product search query is required.");
-  if (query.length > 200) throw new Error("The product search query is too long.");
+  if (query.length > LIMITS.productQuery) {
+    throw new Error(`The product search query must be ${LIMITS.productQuery} characters or fewer.`);
+  }
 
-  const maxResults = Math.min(Math.max(Number(input?.max_results) || 5, 1), 10);
+  const maxResults = validateMaxResults(input?.max_results ?? 5);
   const catalogUrl = new URL("/products?format=json", siteOrigin);
   const response = await fetchCatalog(catalogUrl.href, {
     credentials: "same-origin",

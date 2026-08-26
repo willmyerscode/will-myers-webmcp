@@ -41,4 +41,4 @@ Do not add this tag until the host is deployed and the live script URL passes th
 
 ## Hosting
 
-Cloudflare Workers Static Assets hosts the script. The pilot uses a five-minute browser cache to make rollback fast. The intended custom host is `webmcp.otis.solutions`; the first deploy can use the generated `workers.dev` address until that custom domain is connected.
+Cloudflare Workers Static Assets hosts the script at [webmcp.otis.solutions](https://webmcp.otis.solutions/). The pilot uses a five-minute browser cache to make rollback fast. The generated `workers.dev` address remains available as a fallback.

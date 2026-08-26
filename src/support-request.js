@@ -1,3 +1,5 @@
+import { LIMITS } from "./contracts.js";
+
 export const PENDING_SUPPORT_KEY = "will-myers:webmcp:pending-support-request";
 
 function requiredText(value, field, maxLength) {
@@ -19,8 +21,8 @@ function optionalText(value, maxLength) {
 
 function webUrl(value, field, required = true) {
   const text = required
-    ? requiredText(value, field, 2048)
-    : optionalText(value, 2048);
+    ? requiredText(value, field, LIMITS.url)
+    : optionalText(value, LIMITS.url);
   if (!text) return "";
 
   let url;
@@ -29,14 +31,14 @@ function webUrl(value, field, required = true) {
   } catch {
     throw new Error(`${field} must be a valid HTTP or HTTPS URL.`);
   }
-  if (!['http:', 'https:'].includes(url.protocol)) {
+  if (!["http:", "https:"].includes(url.protocol)) {
     throw new Error(`${field} must be a valid HTTP or HTTPS URL.`);
   }
   return url.href;
 }
 
 export function validateSupportRequest(input) {
-  const email = requiredText(input?.email, "Email", 254);
+  const email = requiredText(input?.email, "Email", LIMITS.email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("Email must be a valid email address.");
   }
@@ -45,8 +47,8 @@ export function validateSupportRequest(input) {
   }
 
   return {
-    first_name: requiredText(input.first_name, "First name", 100),
-    last_name: requiredText(input.last_name, "Last name", 100),
+    first_name: requiredText(input.first_name, "First name", LIMITS.firstName),
+    last_name: requiredText(input.last_name, "Last name", LIMITS.lastName),
     email,
     is_code_curious_member: input.is_code_curious_member,
     product_or_tutorial_url: webUrl(
@@ -54,7 +56,7 @@ export function validateSupportRequest(input) {
       "Product or tutorial URL",
     ),
     website_url: webUrl(input.website_url, "Website URL", false),
-    message: requiredText(input.message, "Message", 5000),
+    message: requiredText(input.message, "Message", LIMITS.message),
   };
 }
 
@@ -103,7 +105,11 @@ function setValue(field, value) {
   if (setter) setter.call(field, value);
   else field.value = value;
 
-  const EventType = view?.Event || Event;
+  dispatchFieldEvents(field);
+}
+
+function dispatchFieldEvents(field) {
+  const EventType = field.ownerDocument?.defaultView?.Event || Event;
   field.dispatchEvent(new EventType("input", { bubbles: true }));
   field.dispatchEvent(new EventType("change", { bubbles: true }));
 }
@@ -113,9 +119,7 @@ function chooseRadio(field) {
   if (typeof field.click === "function") field.click();
   if (!field.checked) {
     field.checked = true;
-    const EventType = field.ownerDocument?.defaultView?.Event || Event;
-    field.dispatchEvent(new EventType("input", { bubbles: true }));
-    field.dispatchEvent(new EventType("change", { bubbles: true }));
+    dispatchFieldEvents(field);
   }
 }
 
@@ -194,7 +198,6 @@ export function applyPendingSupportRequest(document, storage) {
   const pending = storage.getItem(PENDING_SUPPORT_KEY);
   if (!pending) return null;
 
-  const result = fillSupportForm(document, JSON.parse(pending));
   storage.removeItem(PENDING_SUPPORT_KEY);
-  return result;
+  return fillSupportForm(document, JSON.parse(pending));
 }

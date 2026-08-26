@@ -1,10 +1,8 @@
 /webmcp.js
   Cache-Control: public, max-age=300
-  X-Content-Type-Options: nosniff
 
 /webmcp.js.map
   Cache-Control: public, max-age=300
-  X-Content-Type-Options: nosniff
 
 /*
   Referrer-Policy: no-referrer
