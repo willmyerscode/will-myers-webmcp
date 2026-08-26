@@ -4,6 +4,7 @@ import test from "node:test";
 import { parseHTML } from "linkedom";
 
 import { boot, registerWebMCPTools } from "../src/index.js";
+import { addTextBlock } from "../src/page-content.js";
 
 function makePreviewDocument() {
   const squarespaceContext = {
@@ -66,10 +67,8 @@ function makePreviewDocument() {
   return document;
 }
 
-test("the Squarespace Editor registers a read-only editor context tool", async () => {
-  const registrations = [];
-  const previewDocument = makePreviewDocument();
-  let pageModel = {
+function makePageModel() {
+  return {
     regions: [
       {
         id: "region-1",
@@ -92,6 +91,12 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
       },
     ],
   };
+}
+
+test("the Squarespace Editor registers a read-only editor context tool", async () => {
+  const registrations = [];
+  const previewDocument = makePreviewDocument();
+  let pageModel = makePageModel();
   const browser = {
     AbortController,
     console,
@@ -286,6 +291,73 @@ test("the Squarespace Editor registers a read-only editor context tool", async (
   const clearResult = await registrations[6].tool.execute({});
   assert.deepEqual(clearResult, { cleared: true });
   assert.equal(previewDocument.querySelector("#wills-toolkit-mcp-preview"), null);
+});
+
+test("saved text blocks require a proven clean editor state", async () => {
+  function makeBrowser(saveStates, hasEditButton = false) {
+    const previewDocument = makePreviewDocument();
+    let pageModel = makePageModel();
+    let saveCheck = 0;
+    let putCount = 0;
+    const browser = {
+      crypto: globalThis.crypto,
+      location: { href: "https://everything-testing.squarespace.com/config/" },
+      document: {
+        cookie: "crumb=test-crumb",
+        querySelector(selector) {
+          if (selector === "#sqs-site-frame") {
+            return { contentDocument: previewDocument };
+          }
+          if (selector === '[data-test="frameToolbarSave"]') {
+            return saveStates[Math.min(saveCheck++, saveStates.length - 1)] || null;
+          }
+          if (selector === '[data-test="frameToolbarEdit"]') {
+            return hasEditButton ? {} : null;
+          }
+          return null;
+        },
+      },
+      async fetch(url, options = {}) {
+        if (!String(url).endsWith("/api/pages/by-collection-id/page-456")) {
+          return new Response(null, { status: 404 });
+        }
+        if (options.method === "PUT") {
+          putCount += 1;
+          pageModel = JSON.parse(options.body);
+        }
+        return Response.json(pageModel);
+      },
+    };
+    return { browser, putCount: () => putCount };
+  }
+
+  const dirty = makeBrowser([{ disabled: false }]);
+  await assert.rejects(
+    () => addTextBlock(dirty.browser, { text: "Blocked" }),
+    /unsaved manual changes/,
+  );
+  assert.equal(dirty.putCount(), 0);
+
+  const missing = makeBrowser([null]);
+  await assert.rejects(
+    () => addTextBlock(missing.browser, { text: "Blocked" }),
+    /page preview is not ready/,
+  );
+  assert.equal(missing.putCount(), 0);
+
+  const becomesDirty = makeBrowser([{ disabled: true }, { disabled: false }]);
+  await assert.rejects(
+    () => addTextBlock(becomesDirty.browser, { text: "Blocked" }),
+    /unsaved manual changes/,
+  );
+  assert.equal(becomesDirty.putCount(), 0);
+
+  const cleanEditor = makeBrowser([{ disabled: true }, { disabled: true }]);
+  assert.equal(
+    (await addTextBlock(cleanEditor.browser, { text: "Saved" })).saved,
+    true,
+  );
+  assert.equal(cleanEditor.putCount(), 1);
 });
 
 test("a public Squarespace page does not register editor tools", async () => {
