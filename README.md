@@ -2,23 +2,29 @@
 
 A browser-only WebMCP layer for people who use an AI assistant while they work in the Squarespace Editor.
 
-## Current state
+## Current tools
 
-The script registers zero tools. It keeps only the small bridge that loads WebMCP code from the Squarespace preview frame into the signed-in top editor page.
+- `index_site` starts a private site index job and reports its progress.
+- `find_site` searches the index and returns exact page, section, block, or item locations.
+- `read_site` gets fresh Squarespace data for one result and updates its saved browser record.
 
-The next slice will add three read-only tools:
+All three tools are read-only. They cannot change Squarespace. The index stays in IndexedDB in the user's browser. There is no content database on the Cloudflare host.
 
-- `index_site` will build a local site index in the browser.
-- `find_site` will search that index.
-- `read_site` will get current Squarespace data and refresh the local index.
+## What the index contains
 
-No tool can write to Squarespace. The planned index will stay in the user's browser.
+The index starts with the signed-in Squarespace page map and `sitemap.xml`. It follows `?format=json` pagination for blogs and other collection pages. When an item URL is available, its full item response replaces the collection summary.
+
+Call `index_site` with `action: "start"`. Then call it with `action: "status"` until it returns `status: "complete"`. The crawl continues in the page between calls, so a large site does not exceed the browser tool time limit.
+
+Normal pages also use their rendered HTML because Squarespace can return an empty `mainContent` value. The stored records include pages, collection items, sections, and blocks. Block records keep their page → section → block location.
+
+A later index run skips records whose Squarespace update value did not change. A failed page keeps its last valid records. A page that is gone from both discovery sources is removed.
 
 ## How the editor bridge works
 
 Squarespace loads footer code inside `iframe#sqs-site-frame`. The AI assistant reads tools from the top editor page.
 
-The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. The editor copy starts the empty tool shell only when `#sqs-site-frame` is available. A public site page cannot start the shell.
+The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. A public site page cannot start the editor tools.
 
 Browsers without WebMCP support ignore the script. Squarespace keeps working normally.
 

@@ -1,3 +1,5 @@
+import { findSite, readSite, runIndexSiteTool } from "./site-index.js";
+
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {
   browser.console?.warn?.(`[Squarespace WebMCP] ${message}`, error);
@@ -39,6 +41,79 @@ export async function startWebMCPBridge(browser = window) {
     !previewFrame?.contentDocument
   ) {
     return false;
+  }
+
+  browser.__squarespaceWebMCPController?.abort();
+  const Controller = browser.AbortController || AbortController;
+  const controller = new Controller();
+  browser.__squarespaceWebMCPController = controller;
+
+  const tools = [
+    {
+      name: "index_site",
+      title: "Index this Squarespace site",
+      description:
+        "Build or refresh a private, read-only site index in this browser. Call with action=start, then call with action=status until the status is complete. The index includes page, collection item, section, block, text, URL, and metadata records. It does not change Squarespace.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          action: { type: "string", enum: ["start", "status"] },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "find_site",
+      title: "Find content on this Squarespace site",
+      description:
+        "Search the private browser index for page text, titles, URLs, block types, and metadata. It does not fetch or change Squarespace.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 200 },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "read_site",
+      title: "Read current Squarespace content",
+      description:
+        "Fetch current Squarespace data for one indexed page, section, block, or collection item, then refresh its private browser record. It does not change Squarespace.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          record_id: { type: "string" },
+          url: { type: "string" },
+          section_id: { type: "string" },
+          block_id: { type: "string" },
+        },
+        anyOf: [{ required: ["record_id"] }, { required: ["url"] }],
+        additionalProperties: false,
+      },
+    },
+  ];
+
+  for (const tool of tools) {
+    await modelContext.registerTool(
+      {
+        ...tool,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          untrustedContentHint: true,
+        },
+        async execute(input) {
+          if (tool.name === "index_site") return runIndexSiteTool(browser, input);
+          if (tool.name === "find_site") return findSite(browser, input);
+          return readSite(browser, input);
+        },
+      },
+      { signal: controller.signal },
+    );
   }
 
   return true;
