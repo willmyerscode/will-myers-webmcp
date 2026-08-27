@@ -1,26 +1,26 @@
-# Will’s Toolkit MCP
+# Squarespace WebMCP
 
-A WebMCP tool layer for people who use ChatGPT while they work in the Squarespace Editor.
+A browser-only WebMCP layer for people who use an AI assistant while they work in the Squarespace Editor.
 
-## Current tools
+## Current state
 
-- `get_editor_context` reads the active site, page, template, colors, fonts, sections, blocks, and visible block text.
-- `inspect_target` reads the HTML, size, and important styles for one selected element.
-- `read_custom_css` reads current or saved Squarespace Custom CSS.
-- `read_code_injection` reads one Code Injection area or the current page code blocks.
-- `add_text_block` adds a paragraph at the bottom of a Fluid Engine section and saves the page.
-- `preview_css` applies temporary CSS to the active page preview.
-- `clear_preview` removes the temporary CSS.
+The script registers zero tools. It keeps only the small bridge that loads WebMCP code from the Squarespace preview frame into the signed-in top editor page.
 
-Only `add_text_block` saves a site change. It works from the normal page preview and from a clean page editor. It refuses to run when the editor has unsaved manual work. The tool description tells ChatGPT to show the user the exact page, section, and text before it runs. The CSS preview disappears when the page reloads.
+The next slice will add three read-only tools:
+
+- `index_site` will build a local site index in the browser.
+- `find_site` will search that index.
+- `read_site` will get current Squarespace data and refresh the local index.
+
+No tool can write to Squarespace. The planned index will stay in the user's browser.
 
 ## How the editor bridge works
 
-Squarespace loads site code injection inside `iframe#sqs-site-frame`. ChatGPT only reads tools from the top editor page.
+Squarespace loads footer code inside `iframe#sqs-site-frame`. The AI assistant reads tools from the top editor page.
 
-The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. The editor copy registers tools only when `#sqs-site-frame` is available. A public site page cannot register these editor tools.
+The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. The editor copy starts the empty tool shell only when `#sqs-site-frame` is available. A public site page cannot start the shell.
 
-Browsers without WebMCP support ignore the registration. Squarespace keeps working normally.
+Browsers without WebMCP support ignore the script. Squarespace keeps working normally.
 
 ## Local checks
 
@@ -46,5 +46,3 @@ Do not install this test build on a customer site yet.
 ## Hosting
 
 Cloudflare Workers hosts the script at [will-myers-webmcp.otis.solutions](https://will-myers-webmcp.otis.solutions/).
-
-The product-search API and its API key are not part of Will’s Toolkit MCP.
