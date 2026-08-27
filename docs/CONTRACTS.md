@@ -1,109 +1,41 @@
 # Tool contracts
 
-## `get_editor_context`
+## `index_site`
 
-Purpose: give ChatGPT a small, current map of the active Squarespace Editor page before it designs or changes a component.
-
-Inputs: none.
-
-Success output:
-
-- `editor`: editor status and URL.
-- `site`: site ID, title, base URL, and internal URL.
-- `page`: page ID, title, Squarespace type, and preview URL.
-- `template`: template ID and version.
-- `design.colors`: available Squarespace palette names and HSL values.
-- `design.fonts`: heading, body, and metadata font families.
-- `structure`: page-section IDs, themes, block IDs, block types, and short visible text.
-
-The structure excludes the site footer. It returns at most 50 sections, 100 blocks per section, and 240 text characters per block.
-
-Side effects: none. The tool reads the active `#sqs-site-frame` document. It does not fetch the Squarespace API, save content, or change page styles.
-
-Failures use a short JavaScript error. The expected failure is that the active Squarespace preview is not available.
-
-## `inspect_target`
-
-Purpose: give ChatGPT the exact page details it needs before it writes CSS.
+Purpose: build or refresh the private browser index for the current Squarespace site.
 
 Input:
 
-- `selector: string` — required CSS selector, 1–500 characters.
+- `action`: `start` begins a background crawl. `status` reports its progress and final result.
 
-Success output includes the match count and the first matching element’s tag, ID, classes, section ID, block ID, visible text, clean HTML, box size, and important computed styles.
+It reads the signed-in Squarespace page map, structured page JSON, collection pagination, collection item JSON, and rendered normal-page HTML. It does not read the public sitemap. It stores page, item, folder, section, and block records in IndexedDB. Folder URLs are not fetched.
 
-The clean HTML removes scripts and styles and is limited to 20,000 characters. Visible text is limited to 2,000 characters.
+Every response includes `status` and progress counts. A complete result also includes the site ID, discovered route count, stored record count, detailed record counts, fetched count, unchanged count, removed count, request count, `429` count, retry count, total cooldown time, total run time, retry settings, and errors.
 
-Side effects: none.
+Normal requests have no added delay. A `429` response uses `Retry-After`. Without that header, delays are 1, 2, 4, 8, then 16 seconds. The tool makes at most five retries. Each fallback delay is limited to 30 seconds.
 
-## `read_custom_css`
+## `find_site`
 
-Purpose: let ChatGPT see existing CSS before it proposes new CSS.
-
-Inputs: none.
-
-When the Custom CSS editor is open, the tool returns the current textarea value, including unsaved text. On other editor pages, it reads the saved CSS from Squarespace’s internal `GetTemplateCustomCss` endpoint.
-
-Success output includes `source`, `css`, and the visible Squarespace CSS error when one exists. CSS is limited to 100,000 characters.
-
-Side effects: none. This tool can return private site code.
-
-## `read_code_injection`
-
-Purpose: let ChatGPT see existing injected code before it proposes a component or style.
-
-Input:
-
-- `location`: `header`, `footer`, `page`, `lock-page`, or `post-item`.
-
-The `page` option reads code blocks from the active preview. Other options read Squarespace’s internal `GetInjectionSettings` endpoint.
-
-Success output includes the location, code, and detected `html`, `script`, or `mixed` type. Code is limited to 100,000 characters.
-
-Side effects: none. This tool can return private site code.
-
-## `preview_css`
-
-Purpose: let ChatGPT show a proposed design inside the active Squarespace preview before the user saves any code.
-
-Input:
-
-- `css: string` — required, 1–50,000 characters.
-
-The tool rejects `@import` and `url()` so preview CSS cannot load an external file.
-
-Success output:
-
-- `applied: true`
-- `bytes`: UTF-8 size of the CSS.
-- `pageId`: active Squarespace page ID.
-- `note`: confirms that Squarespace was not saved.
-
-Side effect: replaces one temporary `<style>` element in the preview frame. Reloading the page removes it.
-
-## `add_text_block`
-
-Purpose: add a plain paragraph to an existing Fluid Engine section.
+Purpose: search the saved browser index.
 
 Inputs:
 
-- `text: string` — required plain text, 1–5,000 characters.
-- `section_id: string` — optional Fluid Engine section ID. When omitted, the tool uses the last Fluid Engine section on the page.
+- `query`: required search text.
+- `limit`: optional result limit from 1 to 200. The default is 50.
 
-The tool works from the normal page preview and from a clean page editor. It refuses to run when an open editor has unsaved manual changes. It reads the current page model, puts the new block after the existing section rows on desktop and mobile, and saves the full model through Squarespace’s authenticated page API. It then reads the page again and confirms the new block ID, type, definition, and exact escaped text. The fresh read is the proof that Squarespace kept the block, even when the save response has an error status.
+It searches page titles, URLs, content, SEO metadata, item tags and categories, block IDs, and block types. Each result includes a record ID, URL, title, kind, page ID, section ID, block ID, block type, update value, and text sample.
 
-Success output includes `saved`, `pageId`, `sectionId`, `blockId`, `text`, and a note that the editor must reload before a later manual page edit.
+## `read_site`
 
-Side effect: saves a live page-content change. The tool is not read-only and is not idempotent. ChatGPT must show the exact page, section, and text and get user approval before each call.
+Purpose: get fresh Squarespace data for one indexed record and update its browser copy.
 
-Expected failures include a missing sign-in token, a missing page or section, a section that is not Fluid Engine, a rejected Squarespace save, or a fresh read that does not contain the new block.
+Inputs:
 
-## `clear_preview`
+- `record_id`: an ID returned by `find_site`; or
+- `url`: an indexed site URL, with optional `section_id` or `block_id`.
 
-Purpose: remove the CSS added by `preview_css`.
+The result says whether the record still exists and returns its current content, metadata, raw source data, and exact location. A 404 response removes the old records for that URL. Other read errors keep the last valid records. An index job and a live read cannot run at the same time. This prevents one job from replacing the other job's data.
 
-Inputs: none.
+## Safety
 
-Success output: `cleared` is true when a preview existed and false when there was nothing to remove.
-
-Side effect: removes only the temporary preview style. It does not change saved Squarespace CSS.
+All tool requests use HTTP GET. The tools do not send site content to the Cloudflare host. They do not change pages, code, styles, settings, or metadata.

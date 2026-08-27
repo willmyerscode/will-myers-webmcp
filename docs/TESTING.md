@@ -1,4 +1,22 @@
-# Editor context checks
+# Read-only index checks
+
+## Completion criteria
+
+This slice is complete when:
+
+- The index contains every discovered page and collection item.
+- Paginated collection items from pages such as `/technical-blog?format=json` are included.
+- Page, section, and block records have stable locations.
+- The index remains after a browser reload and stays separate for each site.
+- A later run skips unchanged pages, keeps valid data after a read error, and removes missing pages.
+- Search covers text, URLs, titles, block types, and metadata.
+- Search takes less than one second for a 1,000-item test index.
+- A fresh read updates the saved record and removes a record after a 404 response.
+- All browser requests use GET, and no tool can change Squarespace.
+- A large crawl runs in the page and can report progress without one long tool call.
+- The index does not request `sitemap.xml`.
+- Navigation folders are searchable without a request to their URLs.
+- A `429` response waits and retries without slowing normal requests.
 
 ## Automated
 
@@ -10,32 +28,21 @@ npm run check
 npm run build
 ```
 
-## ChatGPT browser
+## Live browser check
 
-1. Sign in to the test Squarespace site inside the ChatGPT browser.
-2. Open a page in the Squarespace Editor.
-3. Confirm that `get_editor_context`, `inspect_target`, `read_custom_css`, `read_code_injection`, `add_text_block`, `preview_css`, and `clear_preview` are available on the top `/config/` page.
-4. Call the tool with `{}`.
-5. Confirm that it returns the current site ID, page ID, template version, colors, fonts, sections, and blocks.
-6. Change to another page and call the tool again. Confirm that the page data changes.
-7. Confirm that the call does not save content or add a preview style.
-8. Call `inspect_target` with one returned section or block ID. Confirm that it returns HTML and computed styles.
-9. With user approval for private code, call `read_custom_css` and one `read_code_injection` location. Confirm that neither tool saves a change.
-10. Call `preview_css` with CSS that targets that section or block ID.
-11. Confirm that the preview changes and that Squarespace does not show a saved change.
-12. Call `clear_preview` and confirm that the temporary change disappears.
-13. Exit page editing mode so the normal page preview shows the Edit button.
-14. Before testing `add_text_block`, show the user the exact site, page, section, and text. Get clear approval.
-15. Call `add_text_block` without clicking Edit. Confirm that it returns `saved: true` and a new block ID.
-16. Reload the editor. Confirm that the new paragraph appears and remains after another reload.
-17. Open a public site page outside the Editor. Confirm that no editor tools register.
+1. Open the Everything Testing site in the signed-in Squarespace Editor.
+2. Call `index_site` with `action: "start"`.
+3. Call it with `action: "status"` until it is complete. Confirm that it reports no errors.
+4. Search for a normal page block and confirm its page, section, and block IDs.
+5. Search for a Technical Blog item that is not on the first collection page.
+6. Reload the Squarespace Editor and repeat both searches without another index run.
+7. Change test content in Squarespace, then run `read_site` for that record. Confirm that it returns the new content.
+8. Confirm that Squarespace shows no saved content, design, code, or metadata change from the tools.
 
 ## Normal browser fallback
 
-1. Open the site in a browser without WebMCP support.
-2. Confirm that the console has no uncaught tool error.
-3. Confirm that the editor and preview work normally.
+Open the site in a browser without WebMCP support. Confirm that the console has no uncaught tool error and that Squarespace works normally.
 
 ## Rollback
 
-Remove the `webmcp.js` script tag from footer code injection. The bridge has no database. Removing the script does not remove page blocks that `add_text_block` already saved.
+Remove the `webmcp.js` script tag from footer code injection. To also remove the local index, delete the `squarespace-webmcp-index` IndexedDB database in browser storage.

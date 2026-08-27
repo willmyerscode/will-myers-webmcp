@@ -1,23 +1,8 @@
-import {
-  ADD_TEXT_BLOCK_SCHEMA,
-  CLEAR_PREVIEW_SCHEMA,
-  GET_EDITOR_CONTEXT_SCHEMA,
-  INSPECT_TARGET_SCHEMA,
-  PREVIEW_CSS_SCHEMA,
-  READ_CODE_INJECTION_SCHEMA,
-  READ_CUSTOM_CSS_SCHEMA,
-} from "./contracts.js";
-import { getEditorContext } from "./editor-context.js";
-import { clearPreview, previewCss } from "./style-preview.js";
-import { inspectTarget } from "./target-inspection.js";
-import { addTextBlock } from "./page-content.js";
-import { readCodeInjection, readCustomCss } from "./site-code.js";
-
-export const VERSION = "0.3.0";
+import { findSite, readSite, runIndexSiteTool } from "./site-index.js";
 
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {
-  browser.console?.warn?.(`[Will’s Toolkit MCP] ${message}`, error);
+  browser.console?.warn?.(`[Squarespace WebMCP] ${message}`, error);
 }
 
 /** @param {any} browser */
@@ -30,14 +15,14 @@ function installEditorBootstrap(browser) {
     const source = browser.document?.currentScript?.src;
     const parentDocument = browser.parent.document;
     if (!source || !parentDocument?.head) return false;
-    if (parentDocument.querySelector?.("script[data-will-toolkit-editor-bootstrap]")) {
+    if (parentDocument.querySelector?.("script[data-squarespace-webmcp-editor-bootstrap]")) {
       return true;
     }
 
     const script = parentDocument.createElement("script");
     script.src = source;
     script.async = true;
-    script.dataset.willToolkitEditorBootstrap = "true";
+    script.dataset.squarespaceWebmcpEditorBootstrap = "true";
     parentDocument.head.append(script);
     return true;
   } catch {
@@ -46,7 +31,7 @@ function installEditorBootstrap(browser) {
 }
 
 /** @param {any} browser */
-export async function registerWebMCPTools(browser = window) {
+export async function startWebMCPBridge(browser = window) {
   const modelContext = browser.document?.modelContext;
   const editorUrl = new URL(browser.location?.href || "about:blank");
   const previewFrame = browser.document?.querySelector?.("#sqs-site-frame");
@@ -58,138 +43,78 @@ export async function registerWebMCPTools(browser = window) {
     return false;
   }
 
-  browser.__willsToolkitMCPController?.abort();
+  browser.__squarespaceWebMCPController?.abort();
   const Controller = browser.AbortController || AbortController;
   const controller = new Controller();
-  browser.__willsToolkitMCPController = controller;
+  browser.__squarespaceWebMCPController = controller;
 
-  await modelContext.registerTool(
+  const tools = [
     {
-      name: "get_editor_context",
-      title: "Get Squarespace Editor context",
+      name: "index_site",
+      title: "Index this Squarespace site",
       description:
-        "Read the current Squarespace Editor page, site identity, design colors, fonts, sections, and blocks. Use this before you design or change a Squarespace page. This tool does not save or change anything.",
-      inputSchema: GET_EDITOR_CONTEXT_SCHEMA,
-      annotations: {
-        readOnlyHint: true,
-        untrustedContentHint: true,
-      },
-      async execute() {
-        return getEditorContext(browser);
+        "Build or refresh a private, read-only site index in this browser. Call with action=start, then call with action=status until the status is complete. The complete result includes all record counts. Use these counts; do not browse the site, read a sitemap, search the web, or run a command to count again. It does not change Squarespace.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          action: { type: "string", enum: ["start", "status"] },
+        },
+        additionalProperties: false,
       },
     },
-    { signal: controller.signal },
-  );
-
-  await modelContext.registerTool(
     {
-      name: "inspect_target",
-      title: "Inspect a Squarespace element",
+      name: "find_site",
+      title: "Find content on this Squarespace site",
       description:
-        "Read the HTML, visible text, size, and important computed styles for one element in the current Squarespace preview. Use a section or block ID from get_editor_context. This tool does not change the page.",
-      inputSchema: INSPECT_TARGET_SCHEMA,
-      annotations: {
-        readOnlyHint: true,
-        untrustedContentHint: true,
-      },
-      async execute(input) {
-        return inspectTarget(browser, input);
+        "Search the private browser index for page text, titles, URLs, block types, and metadata. It does not fetch or change Squarespace.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 200 },
+        },
+        required: ["query"],
+        additionalProperties: false,
       },
     },
-    { signal: controller.signal },
-  );
-
-  await modelContext.registerTool(
     {
-      name: "read_custom_css",
-      title: "Read Squarespace Custom CSS",
+      name: "read_site",
+      title: "Read current Squarespace content",
       description:
-        "Read the current Custom CSS from the editor when it is open, or read the saved Custom CSS. This tool can return private site code. It does not change or save anything.",
-      inputSchema: READ_CUSTOM_CSS_SCHEMA,
-      annotations: {
-        readOnlyHint: true,
-        untrustedContentHint: true,
-      },
-      async execute() {
-        return readCustomCss(browser);
+        "Fetch current Squarespace data for one indexed page, section, block, or collection item, then refresh its private browser record. It does not change Squarespace.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          record_id: { type: "string" },
+          url: { type: "string" },
+          section_id: { type: "string" },
+          block_id: { type: "string" },
+        },
+        anyOf: [{ required: ["record_id"] }, { required: ["url"] }],
+        additionalProperties: false,
       },
     },
-    { signal: controller.signal },
-  );
+  ];
 
-  await modelContext.registerTool(
-    {
-      name: "read_code_injection",
-      title: "Read Squarespace Code Injection",
-      description:
-        "Read one saved Squarespace Code Injection area or the current page code blocks. This tool can return private site code. It does not change or save anything.",
-      inputSchema: READ_CODE_INJECTION_SCHEMA,
-      annotations: {
-        readOnlyHint: true,
-        untrustedContentHint: true,
+  for (const tool of tools) {
+    await modelContext.registerTool(
+      {
+        ...tool,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          untrustedContentHint: true,
+        },
+        async execute(input) {
+          if (tool.name === "index_site") return runIndexSiteTool(browser, input);
+          if (tool.name === "find_site") return findSite(browser, input);
+          return readSite(browser, input);
+        },
       },
-      async execute(input) {
-        return readCodeInjection(browser, input);
-      },
-    },
-    { signal: controller.signal },
-  );
-
-  await modelContext.registerTool(
-    {
-      name: "add_text_block",
-      title: "Add a Squarespace text block",
-      description:
-        "Add a paragraph text block at the bottom of a Fluid Engine section and save the page now. This changes the live Squarespace page. Use get_editor_context first, show the exact page, section, and text to the user, and get approval before calling this tool.",
-      inputSchema: ADD_TEXT_BLOCK_SCHEMA,
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        untrustedContentHint: false,
-      },
-      async execute(input) {
-        return addTextBlock(browser, input);
-      },
-    },
-    { signal: controller.signal },
-  );
-
-  await modelContext.registerTool(
-    {
-      name: "preview_css",
-      title: "Preview CSS in Squarespace",
-      description:
-        "Apply temporary CSS to the current Squarespace page preview. Use this to show a design before it is saved. The preview disappears when the page reloads, and it cannot load external files.",
-      inputSchema: PREVIEW_CSS_SCHEMA,
-      annotations: {
-        readOnlyHint: false,
-        untrustedContentHint: true,
-      },
-      async execute(input) {
-        return previewCss(browser, input);
-      },
-    },
-    { signal: controller.signal },
-  );
-
-  await modelContext.registerTool(
-    {
-      name: "clear_preview",
-      title: "Clear the Squarespace CSS preview",
-      description:
-        "Remove the temporary CSS added by preview_css. This does not change saved Squarespace styles.",
-      inputSchema: CLEAR_PREVIEW_SCHEMA,
-      annotations: {
-        readOnlyHint: false,
-        untrustedContentHint: false,
-      },
-      async execute() {
-        return clearPreview(browser);
-      },
-    },
-    { signal: controller.signal },
-  );
+      { signal: controller.signal },
+    );
+  }
 
   return true;
 }
@@ -198,7 +123,7 @@ export async function registerWebMCPTools(browser = window) {
 export async function boot(browser = window) {
   try {
     if (installEditorBootstrap(browser)) return true;
-    return await registerWebMCPTools(browser);
+    return await startWebMCPBridge(browser);
   } catch (error) {
     logWarning(browser, "Tool registration failed. Squarespace still works normally.", error);
     return false;

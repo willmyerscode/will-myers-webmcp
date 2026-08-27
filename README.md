@@ -1,26 +1,34 @@
-# Will’s Toolkit MCP
+# Squarespace WebMCP
 
-A WebMCP tool layer for people who use ChatGPT while they work in the Squarespace Editor.
+A browser-only WebMCP layer for people who use an AI assistant while they work in the Squarespace Editor.
 
 ## Current tools
 
-- `get_editor_context` reads the active site, page, template, colors, fonts, sections, blocks, and visible block text.
-- `inspect_target` reads the HTML, size, and important styles for one selected element.
-- `read_custom_css` reads current or saved Squarespace Custom CSS.
-- `read_code_injection` reads one Code Injection area or the current page code blocks.
-- `add_text_block` adds a paragraph at the bottom of a Fluid Engine section and saves the page.
-- `preview_css` applies temporary CSS to the active page preview.
-- `clear_preview` removes the temporary CSS.
+- `index_site` starts a private site index job and reports its progress.
+- `find_site` searches the index and returns exact page, section, block, or item locations.
+- `read_site` gets fresh Squarespace data for one result and updates its saved browser record.
 
-Only `add_text_block` saves a site change. It works from the normal page preview and from a clean page editor. It refuses to run when the editor has unsaved manual work. The tool description tells ChatGPT to show the user the exact page, section, and text before it runs. The CSS preview disappears when the page reloads.
+All three tools are read-only. They cannot change Squarespace. The index stays in IndexedDB in the user's browser. There is no content database on the Cloudflare host.
+
+## What the index contains
+
+The index starts with the signed-in Squarespace page map. It does not read `sitemap.xml`. It follows `?format=json` pagination for blogs and other collection pages. When an item URL is available, its full item response replaces the collection summary. Navigation folders become searchable folder records, but their URLs are not fetched.
+
+Call `index_site` with `action: "start"`. Then call it with `action: "status"` until it returns `status: "complete"`. The crawl continues in the page between calls, so a large site does not exceed the browser tool time limit.
+
+Normal pages also use their rendered HTML because Squarespace can return an empty `mainContent` value. The stored records include pages, collection items, sections, and blocks. Block records keep their page → section → block location.
+
+A later index run skips records whose Squarespace update value did not change. A failed page keeps its last valid records. A page that is gone from the private page map is removed.
+
+Normal requests have no added delay. If Squarespace returns `429`, the index uses `Retry-After`. If that header is missing, it waits 1, 2, 4, 8, then 16 seconds. It makes at most five retry requests. Each fallback wait is limited to 30 seconds.
 
 ## How the editor bridge works
 
-Squarespace loads site code injection inside `iframe#sqs-site-frame`. ChatGPT only reads tools from the top editor page.
+Squarespace loads footer code inside `iframe#sqs-site-frame`. The AI assistant reads tools from the top editor page.
 
-The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. The editor copy registers tools only when `#sqs-site-frame` is available. A public site page cannot register these editor tools.
+The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. A public site page cannot start the editor tools.
 
-Browsers without WebMCP support ignore the registration. Squarespace keeps working normally.
+Browsers without WebMCP support ignore the script. Squarespace keeps working normally.
 
 ## Local checks
 
@@ -46,5 +54,3 @@ Do not install this test build on a customer site yet.
 ## Hosting
 
 Cloudflare Workers hosts the script at [will-myers-webmcp.otis.solutions](https://will-myers-webmcp.otis.solutions/).
-
-The product-search API and its API key are not part of Will’s Toolkit MCP.
