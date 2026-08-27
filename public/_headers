@@ -1,0 +1,10 @@
+/webmcp.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/webmcp.js.map
+  Cache-Control: public, max-age=300
+
+/*
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
