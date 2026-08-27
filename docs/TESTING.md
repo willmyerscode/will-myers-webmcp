@@ -14,6 +14,9 @@ This slice is complete when:
 - A fresh read updates the saved record and removes a record after a 404 response.
 - All browser requests use GET, and no tool can change Squarespace.
 - A large crawl runs in the page and can report progress without one long tool call.
+- The index does not request `sitemap.xml`.
+- Navigation folders are searchable without a request to their URLs.
+- A `429` response waits and retries without slowing normal requests.
 
 ## Automated
 

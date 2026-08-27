@@ -69,6 +69,7 @@ test("the signed-in Squarespace Editor registers only the read-only site tools",
 
 test("index_site starts a long crawl in the background and reports its status", async () => {
   const database = new IDBFactory();
+  let sitemapRequests = 0;
   const fetch = async (input) => {
     const url = new URL(String(input));
     if (url.pathname === "/api/context/website") {
@@ -77,7 +78,10 @@ test("index_site starts a long crawl in the background and reports its status", 
         siteLayout: [],
       });
     }
-    if (url.pathname === "/sitemap.xml") return new Response("<urlset></urlset>");
+    if (url.pathname === "/sitemap.xml") {
+      sitemapRequests += 1;
+      return new Response("<urlset></urlset>");
+    }
     return new Response("Not found", { status: 404 });
   };
   const load = makeEditorBrowser({ database, fetch });
@@ -95,6 +99,7 @@ test("index_site starts a long crawl in the background and reports its status", 
   assert.equal(complete.status, "complete");
   assert.equal(complete.siteId, "site-job");
   assert.deepEqual(complete.errors, []);
+  assert.equal(sitemapRequests, 0);
 });
 
 test("index_site and read_site cannot run at the same time", async () => {
@@ -134,11 +139,6 @@ test("index_site and read_site cannot run at the same time", async () => {
           },
         ],
       });
-    }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        "<urlset><url><loc>https://example.com/locked-page</loc></url></urlset>",
-      );
     }
     if (url.pathname === "/locked-page" && url.searchParams.has("format")) {
       if (holdRead) {
@@ -217,11 +217,9 @@ test("a public Squarespace page does not start the editor tool shell", async () 
 test("the browser index keeps paginated collection items after the bridge reloads", async () => {
   const database = new IDBFactory();
   const requests = [];
-  let includeItemInSitemap = true;
   let includeSecondInCollection = true;
   let collectionUpdatedOn = 100;
   let secondItemReturnsHtml = false;
-  let secondItemSitemapUpdatedOn = "2026-08-21";
   const fetch = async (input, options = {}) => {
     const url = new URL(String(input));
     requests.push({ url: url.href, method: options.method || "GET" });
@@ -244,13 +242,6 @@ test("the browser index keeps paginated collection items after the bridge reload
           },
         ],
       });
-    }
-
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        `<urlset><url><loc>https://example.com/technical-blog</loc><lastmod>2026-08-20</lastmod></url>${includeItemInSitemap ? `<url><loc>https://example.com/technical-blog/second-post</loc><lastmod>${secondItemSitemapUpdatedOn}</lastmod></url>` : ""}</urlset>`,
-        { headers: { "content-type": "application/xml" } },
-      );
     }
 
     if (url.pathname === "/technical-blog/first-post") {
@@ -430,7 +421,6 @@ test("the browser index keeps paginated collection items after the bridge reload
   assert.equal((await findTool.execute({ query: "deeply technical" })).total, 1);
 
   collectionUpdatedOn = 101;
-  secondItemSitemapUpdatedOn = "2026-08-22";
   const itemHtmlIndex = await runIndex(indexTool);
   assert.ok(itemHtmlIndex.errors.some(({ url }) => url === "/technical-blog/second-post"));
   const secondPostResults = await findTool.execute({ query: "Second post" });
@@ -450,19 +440,13 @@ test("the browser index keeps paginated collection items after the bridge reload
   assert.equal((await findTool.execute({ query: "deeply technical" })).total, 1);
   secondItemReturnsHtml = false;
 
-  includeItemInSitemap = false;
   await runIndex(indexTool);
   const parent = await findTool.execute({ query: "Technical Blog" });
   assert.equal(parent.results.filter((result) => result.kind === "page").length, 1);
   assert.equal((await findTool.execute({ query: "deeply technical" })).total, 1);
 
-  includeItemInSitemap = true;
   includeSecondInCollection = false;
   collectionUpdatedOn = 102;
-  await runIndex(indexTool);
-  assert.equal((await findTool.execute({ query: "deeply technical" })).total, 1);
-
-  includeItemInSitemap = false;
   await runIndex(indexTool);
   assert.equal((await findTool.execute({ query: "deeply technical" })).total, 0);
 });
@@ -491,11 +475,6 @@ test("index_site retries a failed full collection-item read", async () => {
           },
         ],
       });
-    }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        "<urlset><url><loc>https://example.com/retry-blog</loc></url></urlset>",
-      );
     }
     if (url.pathname === "/retry-blog/item") {
       detailRequests += 1;
@@ -581,11 +560,6 @@ test("the browser index finds text at an exact page, section, and block location
         ],
       });
     }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        "<urlset><url><loc>https://agency.example/about</loc><lastmod>2026-08-21</lastmod></url></urlset>",
-      );
-    }
     if (url.pathname === "/about" && url.searchParams.get("format") === "json") {
       return Response.json({
         collection: {
@@ -654,13 +628,20 @@ test("index_site uses rendered HTML when a normal page does not return JSON", as
     if (url.pathname === "/api/context/website") {
       return Response.json({
         website: { id: "site-html", siteTitle: "HTML Test" },
-        siteLayout: [],
+        siteLayout: [
+          {
+            identifier: "mainNav",
+            links: [
+              {
+                collectionId: "page-html",
+                fullUrl: "/html-page",
+                typeName: "page",
+                updatedOn: 1,
+              },
+            ],
+          },
+        ],
       });
-    }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        "<urlset><url><loc>https://example.com/html-page</loc></url></urlset>",
-      );
     }
     if (url.pathname === "/html-page") {
       return new Response(`
@@ -696,7 +677,7 @@ test("index_site uses rendered HTML when a normal page does not return JSON", as
   assert.equal(read.record.content, "Content from rendered HTML.");
 });
 
-test("index_site ignores Squarespace navigation folders", async () => {
+test("index_site stores Squarespace navigation folders without fetching them", async () => {
   const database = new IDBFactory();
   let folderRequests = 0;
   const fetch = async (input) => {
@@ -720,7 +701,6 @@ test("index_site ignores Squarespace navigation folders", async () => {
         ],
       });
     }
-    if (url.pathname === "/sitemap.xml") return new Response("<urlset></urlset>");
     if (url.pathname === "/services") folderRequests += 1;
     return new Response("Not found", { status: 404 });
   };
@@ -730,10 +710,159 @@ test("index_site ignores Squarespace navigation folders", async () => {
   const indexed = await runIndex(
     load.registrations.find((tool) => tool.name === "index_site"),
   );
-  assert.equal(indexed.ignored, 1);
-  assert.equal(indexed.records, 0);
+  assert.equal(indexed.folders, 1);
+  assert.equal(indexed.records, 1);
+  assert.deepEqual(indexed.counts, {
+    pages: 0,
+    collectionItems: 0,
+    folders: 1,
+    sections: 0,
+    blocks: 0,
+    textRecords: 0,
+    uniqueUrls: 1,
+    metadataRecords: 1,
+    totalRecords: 1,
+  });
   assert.deepEqual(indexed.errors, []);
   assert.equal(folderRequests, 0);
+
+  const found = await load.registrations
+    .find((tool) => tool.name === "find_site")
+    .execute({ query: "Services" });
+  assert.equal(found.total, 1);
+  assert.equal(found.results[0].kind, "folder");
+  assert.equal(found.results[0].url, "/services");
+});
+
+test("index_site waits and retries when Squarespace returns 429", async () => {
+  const database = new IDBFactory();
+  let pageAttempts = 0;
+  const fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/context/website") {
+      return Response.json({
+        website: { id: "site-rate-limit", siteTitle: "Rate Limit Test" },
+        siteLayout: [
+          {
+            identifier: "mainNav",
+            links: [
+              {
+                collectionId: "page-rate-limit",
+                title: "Rate limited page",
+                fullUrl: "/rate-limited",
+                typeName: "page",
+                updatedOn: 1,
+              },
+            ],
+          },
+        ],
+      });
+    }
+    if (url.pathname === "/rate-limited" && url.searchParams.has("format")) {
+      pageAttempts += 1;
+      if (pageAttempts === 1) {
+        return new Response("Slow down", {
+          status: 429,
+          headers: { "retry-after": "0.01" },
+        });
+      }
+      return Response.json({
+        collection: {
+          id: "page-rate-limit",
+          title: "Rate limited page",
+          fullUrl: "/rate-limited",
+          typeName: "page",
+          updatedOn: 1,
+        },
+      });
+    }
+    if (url.pathname === "/rate-limited") {
+      return new Response('<main id="page"></main>');
+    }
+    return new Response("Not found", { status: 404 });
+  };
+
+  const load = makeEditorBrowser({ database, fetch });
+  await startWebMCPBridge(load.browser);
+  const started = performance.now();
+  const indexed = await runIndex(
+    load.registrations.find((tool) => tool.name === "index_site"),
+  );
+  const duration = performance.now() - started;
+
+  assert.equal(pageAttempts, 2);
+  assert.equal(indexed.rateLimits, 1);
+  assert.equal(indexed.retries, 1);
+  assert.equal(indexed.cooldownMs, 10);
+  assert.deepEqual(indexed.rateLimitPolicy, {
+    normalDelayMs: 0,
+    maxRetries: 5,
+    fallbackDelaysMs: [1_000, 2_000, 4_000, 8_000, 16_000],
+    maxFallbackDelayMs: 30_000,
+    honorsRetryAfter: true,
+  });
+  assert.ok(indexed.elapsedMs >= 8, `The reported time was ${indexed.elapsedMs} ms.`);
+  assert.deepEqual(indexed.errors, []);
+  assert.ok(duration >= 8, `The retry completed too soon: ${duration.toFixed(1)} ms.`);
+});
+
+test("index_site uses fallback delays and stops after five 429 retries", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1_000 });
+  const database = new IDBFactory();
+  let pageAttempts = 0;
+  const fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/context/website") {
+      return Response.json({
+        website: { id: "site-rate-limit-stop", siteTitle: "Rate Limit Stop Test" },
+        siteLayout: [
+          {
+            identifier: "mainNav",
+            links: [
+              {
+                collectionId: "page-rate-limit-stop",
+                title: "Rate limit stop page",
+                fullUrl: "/rate-limit-stop",
+                typeName: "page",
+                updatedOn: 1,
+              },
+            ],
+          },
+        ],
+      });
+    }
+    if (url.pathname === "/rate-limit-stop") {
+      pageAttempts += 1;
+      return new Response("Slow down", { status: 429 });
+    }
+    return new Response("Not found", { status: 404 });
+  };
+
+  const load = makeEditorBrowser({ database, fetch });
+  await startWebMCPBridge(load.browser);
+  const indexing = runIndex(
+    load.registrations.find((tool) => tool.name === "index_site"),
+  );
+  const delays = [1_000, 2_000, 4_000, 8_000, 16_000];
+  for (let attempt = 1; attempt <= delays.length; attempt += 1) {
+    while (pageAttempts < attempt) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    t.mock.timers.tick(delays[attempt - 1]);
+  }
+
+  const indexed = await indexing;
+  assert.equal(pageAttempts, 6);
+  assert.equal(indexed.rateLimits, 6);
+  assert.equal(indexed.retries, 5);
+  assert.equal(indexed.cooldownMs, 31_000);
+  assert.deepEqual(indexed.errors, [
+    {
+      url: "/rate-limit-stop",
+      message:
+        "Squarespace returned 429 for https://everything-testing.squarespace.com/rate-limit-stop?format=json.",
+    },
+  ]);
 });
 
 test("read_site returns fresh block content and updates the browser index", async () => {
@@ -762,11 +891,6 @@ test("read_site returns fresh block content and updates the browser index", asyn
           },
         ],
       });
-    }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        "<urlset><url><loc>https://example.com/services</loc></url></urlset>",
-      );
     }
     if (url.pathname === "/services" && url.searchParams.get("format") === "json") {
       if (invalidResponse === "structure") return Response.json({ empty: true });
@@ -891,13 +1015,6 @@ test("index_site skips unchanged pages, keeps failed pages, and removes missing 
         siteLayout: [{ identifier: "mainNav", links }],
       });
     }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        `<urlset>${links
-          .map((link) => `<url><loc>https://example.com${link.fullUrl}</loc></url>`)
-          .join("")}</urlset>`,
-      );
-    }
     if (["/alpha", "/beta"].includes(url.pathname) && url.searchParams.has("format")) {
       pageFetches += 1;
       if (phase === 3 && url.pathname === "/alpha") {
@@ -967,11 +1084,6 @@ test("find_site searches a 1,000-item site index in less than one second", async
           },
         ],
       });
-    }
-    if (url.pathname === "/sitemap.xml") {
-      return new Response(
-        "<urlset><url><loc>https://example.com/library</loc></url></urlset>",
-      );
     }
     if (url.pathname.startsWith("/library/entry-")) {
       const index = Number(url.pathname.split("-").at(-1));

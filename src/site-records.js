@@ -88,6 +88,25 @@ export function pageRecord(siteId, collection, fallbackUrl) {
   });
 }
 
+export function folderRecord(siteId, folder, fallbackUrl) {
+  const folderId = folder?.id || fallbackUrl;
+  return createRecord({
+    recordId: `${siteId}:folder:${folderId}`,
+    siteId,
+    kind: "folder",
+    url: folder?.fullUrl || fallbackUrl,
+    title: folder?.title || fallbackUrl,
+    pageId: folderId,
+    updatedOn: folder?.updatedOn || null,
+    metadata: {
+      typeName: folder?.typeName || "folders",
+      enabled: folder?.enabled,
+      draft: folder?.draft,
+    },
+    raw: folder || null,
+  });
+}
+
 export function itemRecord(browser, siteId, collection, item) {
   return createRecord({
     recordId: `${siteId}:item:${item.id}`,

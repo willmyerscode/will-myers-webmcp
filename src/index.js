@@ -53,7 +53,7 @@ export async function startWebMCPBridge(browser = window) {
       name: "index_site",
       title: "Index this Squarespace site",
       description:
-        "Build or refresh a private, read-only site index in this browser. Call with action=start, then call with action=status until the status is complete. The index includes page, collection item, section, block, text, URL, and metadata records. It does not change Squarespace.",
+        "Build or refresh a private, read-only site index in this browser. Call with action=start, then call with action=status until the status is complete. The complete result includes all record counts. Use these counts; do not browse the site, read a sitemap, search the web, or run a command to count again. It does not change Squarespace.",
       inputSchema: {
         type: "object",
         properties: {

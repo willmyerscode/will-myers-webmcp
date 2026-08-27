@@ -5,6 +5,7 @@ import {
   replaceUrlRecords,
 } from "./browser-index-storage.js";
 import {
+  folderRecord,
   itemRecord,
   pageInfoFromHtml,
   pageRecord,
@@ -15,8 +16,11 @@ import {
   discoverUrls,
   fetchHtml,
   fetchJson,
+  getRateLimitPolicy,
+  getRequestStats,
   jsonUrl,
   normalizePath,
+  resetRequestStats,
   siteOrigin,
 } from "./squarespace-source.js";
 
@@ -63,7 +67,31 @@ function recordFromSource(record, sourceUrl) {
   return { ...record, sourceVersions: { [sourceUrl]: sourceVersion } };
 }
 
-async function fullCollectionItems(browser, origin, siteId, items, records, errors) {
+function recordCounts(records) {
+  return {
+    pages: records.filter((record) => record.kind === "page").length,
+    collectionItems: records.filter((record) => record.kind === "item").length,
+    folders: records.filter((record) => record.kind === "folder").length,
+    sections: records.filter((record) => record.kind === "section").length,
+    blocks: records.filter((record) => record.kind === "block").length,
+    textRecords: records.filter((record) => record.content?.trim()).length,
+    uniqueUrls: new Set(records.map((record) => record.url)).size,
+    metadataRecords: records.filter(
+      (record) => record.metadata && Object.keys(record.metadata).length > 0,
+    ).length,
+    totalRecords: records.length,
+  };
+}
+
+async function fullCollectionItems(
+  browser,
+  origin,
+  siteId,
+  items,
+  records,
+  errors,
+  previousRecords,
+) {
   let complete = true;
   for (const item of items) {
     if (!item.fullUrl) continue;
@@ -81,6 +109,16 @@ async function fullCollectionItems(browser, origin, siteId, items, records, erro
     } catch (error) {
       complete = false;
       errors.push({ url: item.fullUrl, message: error.message });
+      const previous = previousRecords.find(
+        (record) => record.recordId === `${siteId}:item:${item.id}`,
+      );
+      if (previous) {
+        const currentIndex = records.findIndex(
+          (candidate) => candidate.recordId === previous.recordId,
+        );
+        if (currentIndex >= 0) records[currentIndex] = previous;
+        else records.push(previous);
+      }
     }
   }
   return complete;
@@ -127,7 +165,15 @@ async function renderedPageRecords(browser, origin, siteId, entry) {
   ];
 }
 
-async function readDiscoveredUrl(browser, origin, siteId, entry, errors, knownItemUrls) {
+async function readDiscoveredUrl(
+  browser,
+  origin,
+  siteId,
+  entry,
+  errors,
+  knownItemUrls,
+  previousRecords,
+) {
   const records = [];
   const itemIds = new Set();
   const collectionItems = [];
@@ -172,6 +218,7 @@ async function readDiscoveredUrl(browser, origin, siteId, entry, errors, knownIt
     collectionItems,
     records,
     errors,
+    previousRecords,
   );
   for (const record of records) {
     record.sourceVersions = {
@@ -183,21 +230,14 @@ async function readDiscoveredUrl(browser, origin, siteId, entry, errors, knownIt
 
 /** @param {any} browser @param {(progress: object) => void} [onProgress] */
 export async function indexSite(browser, onProgress = () => {}) {
+  const startedAt = Date.now();
+  resetRequestStats(browser);
   const origin = siteOrigin(browser);
   const context = await fetchJson(browser, new URL("/api/context/website", origin));
   const siteId = context.website?.id;
   if (!siteId) throw new Error("Squarespace did not return a site ID.");
 
-  const sitemapResponse = await browser.fetch(new URL("/sitemap.xml", origin), {
-    method: "GET",
-    credentials: "same-origin",
-    headers: { accept: "application/xml,text/xml" },
-  });
-  if (!sitemapResponse.ok) {
-    throw new Error(`Squarespace returned ${sitemapResponse.status} for /sitemap.xml.`);
-  }
-
-  const discovered = discoverUrls(context, await sitemapResponse.text(), origin);
+  const discovered = discoverUrls(context, origin);
   onProgress({ completed: 0, total: discovered.size, url: null });
   const previousRecords = await previousIndex(browser, origin, siteId);
   const knownItemUrls = new Set(
@@ -209,13 +249,16 @@ export async function indexSite(browser, onProgress = () => {}) {
   const nextRecords = new Map();
   const errors = [];
   let skipped = 0;
-  let ignored = 0;
   let indexed = 0;
   let completed = 0;
 
   for (const entry of discovered.values()) {
     if (["folder", "folders"].includes(entry.collection?.typeName)) {
-      ignored += 1;
+      const record = folderRecord(siteId, entry.collection, entry.url);
+      record.sourceVersions = {
+        [entry.url]: entry.updatedOn ?? record.updatedOn ?? null,
+      };
+      keepRecord(nextRecords, record);
     } else {
       const previous = previousBySource.get(entry.url) || [];
       const unchanged =
@@ -245,6 +288,7 @@ export async function indexSite(browser, onProgress = () => {}) {
             entry,
             errors,
             knownItemUrls,
+            previous,
           );
           for (const record of records) keepRecord(nextRecords, record);
           indexed += 1;
@@ -269,16 +313,21 @@ export async function indexSite(browser, onProgress = () => {}) {
     { origin, siteId, title: context.website?.siteTitle || null, indexedAt: Date.now() },
     records,
   );
+  const counts = recordCounts(records);
 
   return {
     siteId,
     discovered: discovered.size,
-    records: records.length,
-    collectionItems: records.filter((record) => record.kind === "item").length,
+    records: counts.totalRecords,
+    collectionItems: counts.collectionItems,
+    folders: counts.folders,
+    counts,
     indexed,
     skipped,
-    ignored,
     removed,
+    elapsedMs: Date.now() - startedAt,
+    rateLimitPolicy: getRateLimitPolicy(),
+    ...getRequestStats(browser),
     errors,
   };
 }

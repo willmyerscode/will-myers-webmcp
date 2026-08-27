@@ -8,9 +8,11 @@ Input:
 
 - `action`: `start` begins a background crawl. `status` reports its progress and final result.
 
-It reads the signed-in Squarespace site map, public sitemap, structured page JSON, collection pagination, collection item JSON, and rendered normal-page HTML. It stores page, item, section, and block records in IndexedDB.
+It reads the signed-in Squarespace page map, structured page JSON, collection pagination, collection item JSON, and rendered normal-page HTML. It does not read the public sitemap. It stores page, item, folder, section, and block records in IndexedDB. Folder URLs are not fetched.
 
-Every response includes `status` and progress counts. A complete result also includes the site ID, discovered URL count, stored record count, collection item count, fetched count, unchanged count, ignored navigation-folder count, removed count, and page errors.
+Every response includes `status` and progress counts. A complete result also includes the site ID, discovered route count, stored record count, detailed record counts, fetched count, unchanged count, removed count, request count, `429` count, retry count, total cooldown time, total run time, retry settings, and errors.
+
+Normal requests have no added delay. A `429` response uses `Retry-After`. Without that header, delays are 1, 2, 4, 8, then 16 seconds. The tool makes at most five retries. Each fallback delay is limited to 30 seconds.
 
 ## `find_site`
 
