@@ -3,7 +3,7 @@
 Squarespace WebMCP gives Codex read-only tools for a Squarespace site that is open in the editor. It uses [WebMCP](https://learn.chatgpt.com/docs/webmcp), a proposed web standard that lets an AI agent use tools supplied by the page that you are viewing.
 
 > [!CAUTION]
-> This project is an early beta for testing and play. Do not use it as production infrastructure. It depends on unsupported Squarespace endpoints and page details that can change without notice. Make a backup before you act on any result.
+> This project is an early alpha for testing and play. Do not use it as production infrastructure. It depends on unsupported Squarespace endpoints and page details that can change without notice. Make a backup before you act on any result.
 
 ## Install
 
@@ -17,10 +17,10 @@ You use Codex through your ChatGPT account. You do not need an OpenAI API key. A
 In Squarespace, open the Code Injection panel. Paste this line into **Footer**, and then save:
 
 ```html
-<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@main/dist/webmcp.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@v0.6.0-alpha.1/dist/webmcp.js"></script>
 ```
 
-The link loads `dist/webmcp.js` from the public GitHub repository through [jsDelivr](https://www.jsdelivr.com/?docs=gh). The `@main` link follows this beta and can change. It is suitable for testing, but it is not a stable production version.
+The link loads `dist/webmcp.js` from the public GitHub repository through [jsDelivr](https://www.jsdelivr.com/?docs=gh). It is pinned to the `v0.6.0-alpha.1` Git tag, so later work on `main` will not change this file. To get a later alpha, replace the version in the link after a new release is published.
 
 Next:
 
@@ -114,7 +114,7 @@ Published upper limits also differ. These numbers are not promised free space:
 
 The device can run out of real free space before it reaches these calculated limits. Other site data for the same origin can also use part of the quota.
 
-The current beta has these practical risks:
+The current alpha has these practical risks:
 
 - A large site takes longer because the index reads each discovered page and collection item.
 - The saved index can be larger than the visible page text. It also keeps source JSON and some section and block HTML so results have context.
@@ -129,7 +129,7 @@ To remove the tool, delete its script tag from Footer Code Injection. To also re
 
 ## Unsupported Squarespace interfaces
 
-These are the Squarespace interfaces and page details used by the current beta:
+These are the Squarespace interfaces and page details used by the current alpha:
 
 | Interface | Use | Status |
 | --- | --- | --- |
