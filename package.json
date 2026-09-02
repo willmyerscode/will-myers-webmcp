@@ -1,7 +1,17 @@
 {
   "name": "will-myers-webmcp",
-  "version": "0.5.0",
+  "version": "0.6.0-alpha.4",
   "private": true,
+  "description": "Read-only WebMCP tools for inspecting a Squarespace site in Codex.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/willmyerscode/will-myers-webmcp.git"
+  },
+  "homepage": "https://github.com/willmyerscode/will-myers-webmcp#readme",
+  "bugs": {
+    "url": "https://github.com/willmyerscode/will-myers-webmcp/issues"
+  },
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

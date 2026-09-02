@@ -347,7 +347,7 @@ export async function runIndexSiteTool(browser, input) {
   if (action === "status") return jobSnapshot(browser.__squarespaceSiteIndexJob);
   if (browser.__squarespaceSiteReadCount > 0) {
     throw new Error(
-      "index_site is unavailable while read_site is running. Wait until the live read is complete.",
+      "index_site is unavailable while read_site_record is running. Wait until the live read is complete.",
     );
   }
 
@@ -377,7 +377,7 @@ export async function runIndexSiteTool(browser, input) {
 }
 
 /** @param {any} browser @param {{query?: string, limit?: number}} input */
-export async function findSite(browser, input) {
+export async function searchSite(browser, input) {
   const query = input?.query?.trim().toLocaleLowerCase();
   if (!query) throw new Error("A search query is required.");
   const origin = siteOrigin(browser);
@@ -400,7 +400,7 @@ export async function findSite(browser, input) {
  * @param {any} browser
  * @param {{record_id?: string, url?: string, section_id?: string, block_id?: string}} input
  */
-async function readSiteUnlocked(browser, input) {
+async function readSiteRecordUnlocked(browser, input) {
   const origin = siteOrigin(browser);
   const site = await loadSite(browser, origin);
   const cached = await allSiteRecords(browser, site.siteId);
@@ -474,16 +474,16 @@ async function readSiteUnlocked(browser, input) {
   };
 }
 
-export async function readSite(browser, input) {
+export async function readSiteRecord(browser, input) {
   if (browser.__squarespaceSiteIndexJob?.status === "running") {
     throw new Error(
-      "read_site is unavailable while index_site is running. Wait until indexing is complete.",
+      "read_site_record is unavailable while index_site is running. Wait until indexing is complete.",
     );
   }
 
   browser.__squarespaceSiteReadCount = (browser.__squarespaceSiteReadCount || 0) + 1;
   try {
-    return await readSiteUnlocked(browser, input);
+    return await readSiteRecordUnlocked(browser, input);
   } finally {
     browser.__squarespaceSiteReadCount -= 1;
   }

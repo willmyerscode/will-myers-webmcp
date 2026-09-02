@@ -1,4 +1,5 @@
-import { findSite, readSite, runIndexSiteTool } from "./site-index.js";
+import { readSiteRecord, runIndexSiteTool, searchSite } from "./site-index.js";
+import { readSiteCodeInjection, readSiteCustomCss } from "./site-code.js";
 
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {
@@ -63,8 +64,8 @@ export async function startWebMCPBridge(browser = window) {
       },
     },
     {
-      name: "find_site",
-      title: "Find content on this Squarespace site",
+      name: "search_site",
+      title: "Search this Squarespace site",
       description:
         "Search the private browser index for page text, titles, URLs, block types, and metadata. It does not fetch or change Squarespace.",
       inputSchema: {
@@ -78,8 +79,8 @@ export async function startWebMCPBridge(browser = window) {
       },
     },
     {
-      name: "read_site",
-      title: "Read current Squarespace content",
+      name: "read_site_record",
+      title: "Read one current Squarespace record",
       description:
         "Fetch current Squarespace data for one indexed page, section, block, or collection item, then refresh its private browser record. It does not change Squarespace.",
       inputSchema: {
@@ -91,6 +92,28 @@ export async function startWebMCPBridge(browser = window) {
           block_id: { type: "string" },
         },
         anyOf: [{ required: ["record_id"] }, { required: ["url"] }],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "read_site_custom_css",
+      title: "Read this site's Custom CSS",
+      description:
+        "Return the current Custom CSS text from Squarespace. It does not analyze or change the CSS.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "read_site_code_injection",
+      title: "Read this site's Code Injection",
+      description:
+        "Return the current site-wide Code Injection settings from Squarespace. It does not analyze or change the code.",
+      inputSchema: {
+        type: "object",
+        properties: {},
         additionalProperties: false,
       },
     },
@@ -108,8 +131,13 @@ export async function startWebMCPBridge(browser = window) {
         },
         async execute(input) {
           if (tool.name === "index_site") return runIndexSiteTool(browser, input);
-          if (tool.name === "find_site") return findSite(browser, input);
-          return readSite(browser, input);
+          if (tool.name === "search_site") return searchSite(browser, input);
+          if (tool.name === "read_site_record") return readSiteRecord(browser, input);
+          if (tool.name === "read_site_custom_css") return readSiteCustomCss(browser);
+          if (tool.name === "read_site_code_injection") {
+            return readSiteCodeInjection(browser);
+          }
+          throw new Error(`Unknown tool: ${tool.name}`);
         },
       },
       { signal: controller.signal },

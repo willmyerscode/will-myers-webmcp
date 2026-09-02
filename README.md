@@ -1,56 +1,49 @@
 # Squarespace WebMCP
 
-A browser-only WebMCP layer for people who use an AI assistant while they work in the Squarespace Editor.
+Squarespace WebMCP gives Codex read-only tools for the Squarespace site open in your editor. It uses [WebMCP](https://learn.chatgpt.com/docs/webmcp), so you can work through your ChatGPT account without an OpenAI API key.
 
-## Current tools
+> [!CAUTION]
+> This project is an early alpha for testing. It uses unsupported Squarespace endpoints that can change without notice. Do not use it as production infrastructure. Review every answer before you change your site.
 
-- `index_site` starts a private site index job and reports its progress.
-- `find_site` searches the index and returns exact page, section, block, or item locations.
-- `read_site` gets fresh Squarespace data for one result and updates its saved browser record.
+## Try a Custom CSS review
 
-All three tools are read-only. They cannot change Squarespace. The index stays in IndexedDB in the user's browser. There is no content database on the Cloudflare host.
+This is the first use case for the project. Codex reads your Custom CSS and your local site index, then helps you find CSS that may no longer be needed. The WebMCP tools only read data. Codex makes the judgment.
 
-## What the index contains
+### 1. Install the script
 
-The index starts with the signed-in Squarespace page map. It does not read `sitemap.xml`. It follows `?format=json` pagination for blogs and other collection pages. When an item URL is available, its full item response replaces the collection summary. Navigation folders become searchable folder records, but their URLs are not fetched.
+You need a Squarespace site and a WebMCP agent. This project is tested with Codex in its built-in browser.
 
-Call `index_site` with `action: "start"`. Then call it with `action: "status"` until it returns `status: "complete"`. The crawl continues in the page between calls, so a large site does not exceed the browser tool time limit.
-
-Normal pages also use their rendered HTML because Squarespace can return an empty `mainContent` value. The stored records include pages, collection items, sections, and blocks. Block records keep their page → section → block location.
-
-A later index run skips records whose Squarespace update value did not change. A failed page keeps its last valid records. A page that is gone from the private page map is removed.
-
-Normal requests have no added delay. If Squarespace returns `429`, the index uses `Retry-After`. If that header is missing, it waits 1, 2, 4, 8, then 16 seconds. It makes at most five retry requests. Each fallback wait is limited to 30 seconds.
-
-## How the editor bridge works
-
-Squarespace loads footer code inside `iframe#sqs-site-frame`. The AI assistant reads tools from the top editor page.
-
-The preview copy of `webmcp.js` checks that its parent is the same-origin Squarespace `/config` page. It then loads one copy of itself into that editor page. A public site page cannot start the editor tools.
-
-Browsers without WebMCP support ignore the script. Squarespace keeps working normally.
-
-## Local checks
-
-```sh
-npm install
-npm test
-npm run check
-npm run build
-```
-
-The built browser file is `dist/webmcp.js`.
-
-## Squarespace test installation
-
-Add this line to the test site footer code injection area:
+Open the Squarespace Code Injection panel. Paste this line into **Footer**, then save:
 
 ```html
-<script defer src="https://will-myers-webmcp.otis.solutions/webmcp.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@0.6.0-alpha.4/dist/webmcp.js"></script>
 ```
 
-Do not install this test build on a customer site yet.
+This link is pinned to alpha.4. Later changes to `main` will not change the installed file.
 
-## Hosting
+### 2. Open the site tools
 
-Cloudflare Workers hosts the script at [will-myers-webmcp.otis.solutions](https://will-myers-webmcp.otis.solutions/).
+1. Open your signed-in Squarespace editor in the Codex built-in browser.
+2. Open the site you want to review.
+3. Open **Site tools** in the browser address bar.
+
+### 3. Ask Codex
+
+Try this prompt:
+
+> Index this Squarespace site and wait for the index to finish. Read my Custom CSS. Use the site index to find CSS that may no longer be needed. Explain the evidence and possible mistakes. Do not change anything.
+
+The review can have false positives. CSS may appear only in a mobile menu, hover state, pop-up, store page, member area, or another temporary state.
+
+## Learn more
+
+- [User guide](guide/README.md)
+- [Tool reference](guide/tools.md)
+- [How the index and WebMCP bridge work](guide/how-it-works.md)
+- [Risks, browser support, and local storage](guide/risks-and-limitations.md)
+
+Squarespace explains [how to use Footer Code Injection](https://support.squarespace.com/hc/en-us/articles/205815908-Using-code-injection). Squarespace does not support custom code installed this way.
+
+## License
+
+[MIT](LICENSE) © Will Myers
