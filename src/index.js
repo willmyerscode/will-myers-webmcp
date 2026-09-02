@@ -1,4 +1,5 @@
 import { findSite, readSite, runIndexSiteTool } from "./site-index.js";
+import { auditCustomCss } from "./custom-css-audit.js";
 
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {
@@ -94,6 +95,17 @@ export async function startWebMCPBridge(browser = window) {
         additionalProperties: false,
       },
     },
+    {
+      name: "audit_custom_css",
+      title: "Find missing IDs in Squarespace Custom CSS",
+      description:
+        "Read Custom CSS and report selectors that use a Squarespace block or section ID that is absent from the private site index. Run index_site first. This is a narrow review aid. It does not change CSS and it does not prove that other selectors are unused.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
   ];
 
   for (const tool of tools) {
@@ -109,7 +121,8 @@ export async function startWebMCPBridge(browser = window) {
         async execute(input) {
           if (tool.name === "index_site") return runIndexSiteTool(browser, input);
           if (tool.name === "find_site") return findSite(browser, input);
-          return readSite(browser, input);
+          if (tool.name === "read_site") return readSite(browser, input);
+          return auditCustomCss(browser);
         },
       },
       { signal: controller.signal },

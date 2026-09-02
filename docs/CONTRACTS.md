@@ -36,6 +36,16 @@ Inputs:
 
 The result says whether the record still exists and returns its current content, metadata, raw source data, and exact location. A 404 response removes the old records for that URL. Other read errors keep the last valid records. An index job and a live read cannot run at the same time. This prevents one job from replacing the other job's data.
 
+## `audit_custom_css`
+
+Purpose: make a small review list for Custom CSS.
+
+Input: none.
+
+Run `index_site` first. The tool reads Custom CSS with HTTP GET. It parses the CSS and checks exact Squarespace block and section IDs against the local index. It reports a selector when its ID is not in the index. It says if the full rule can be removed or if only one selector in a group is a candidate.
+
+The tool skips ID selectors that use `:has()`, `:is()`, `:not()`, or `:where()`. It does not judge general class selectors. It stops if the last index had read errors. It does not remove or save CSS. Every result is a review candidate, not proof that removal is safe.
+
 ## Safety
 
 All tool requests use HTTP GET. The tools do not send site content to the Cloudflare host. They do not change pages, code, styles, settings, or metadata.

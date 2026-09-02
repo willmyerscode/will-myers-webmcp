@@ -310,7 +310,13 @@ export async function indexSite(browser, onProgress = () => {}) {
 
   await replaceSiteRecords(
     browser,
-    { origin, siteId, title: context.website?.siteTitle || null, indexedAt: Date.now() },
+    {
+      origin,
+      siteId,
+      title: context.website?.siteTitle || null,
+      indexedAt: Date.now(),
+      indexErrorCount: errors.length,
+    },
     records,
   );
   const counts = recordCounts(records);

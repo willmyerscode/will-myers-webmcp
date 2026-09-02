@@ -9,11 +9,10 @@ Squarespace WebMCP gives Codex read-only tools for a Squarespace site that is op
 
 You need:
 
-- A Squarespace plan that supports Code Injection.
-- The latest ChatGPT desktop app with access to site tools.
+- A Squarespace website.
 - A WebMCP-capable agent. This project is currently tested with **Codex** in the app's built-in browser.
 
-You use Codex through your ChatGPT account. You do not need an OpenAI API key. A ChatGPT subscription by itself does not guarantee site-tool access. Access also depends on your workspace, selected model, and the current OpenAI rollout. WebMCP does not work for this project in a normal browser tab by itself. See the current [OpenAI site-tools guide](https://learn.chatgpt.com/docs/webmcp) for availability.
+You use Codex through your ChatGPT account. You do not need an OpenAI API key. A ChatGPT subscription by itself does not guarantee site-tool access. Access also depends on your workspace, selected model, and the current OpenAI rollout. WebMCP does not work for this project in a normal browser tab by itself.
 
 In Squarespace, open the Code Injection panel. Paste this line into **Footer**, and then save:
 
@@ -42,28 +41,22 @@ Try prompts such as:
 - “Find every page or collection item that contains the words `summer workshop`.”
 - “Find every block that mentions `old product name`.”
 - “Read this search result again and tell me if its content is still current.”
-
-The intended later CSS prompts are:
-
-- “Check my Custom CSS and show selectors that did not match any indexed page. Do not change anything.”
-- “For each unused-CSS candidate, explain what could make it a false positive.”
-- “Make a review list of the safest CSS candidates to remove. Keep dynamic, responsive, commerce, and system-page rules.”
-
-Those CSS prompts will not work until a later release adds a Custom CSS tool.
+- “Check my Custom CSS and show selectors that did not match any indexed page. For each unused-CSS candidate, explain what could make it a false positive. Make a review list of the safest CSS candidates to remove. Keep dynamic, responsive, commerce, and system-page rules.”
 
 ## Current focus: find Custom CSS that may be unused
 
-The narrow goal is to help a person review the Squarespace Custom CSS area. The planned flow is:
+The narrow goal is to help a person review the Squarespace Custom CSS area. The current flow is:
 
-1. Read the site's Custom CSS.
-2. Index every page that the signed-in editor reports.
-3. Test each CSS selector against the indexed page HTML.
-4. Report selectors that did not match, with the pages and evidence that were checked.
-5. Let the person review the report before any CSS is removed.
+1. Run `index_site` and wait for it to finish without errors.
+2. Run `audit_custom_css`.
+3. The tool reads the site's Custom CSS.
+4. It finds selectors that use a specific Squarespace block or section ID.
+5. It reports an ID when that ID is not in the local site index.
+6. You review the report before you remove any CSS.
 
-This work must be careful. A selector that is absent from saved page HTML can still be used by a menu, hover state, pop-up, store page, member area, mobile layout, injected widget, or other temporary state. The tool should give you candidates to review. It should not promise that automatic removal is safe.
+This is a small and careful first check. It does not test general class selectors. It skips ID selectors that use `:has()`, `:is()`, `:not()`, or `:where()`. A selector that is absent from saved page HTML can still be used by a menu, hover state, pop-up, store page, member area, mobile layout, injected widget, or other temporary state. The tool gives you candidates to review. It does not promise that automatic removal is safe.
 
-The current release does **not** read the Custom CSS area and does **not** remove CSS. It first supplies the read-only page index that the CSS review will use.
+The tool does **not** remove or save CSS. It only reads and reports.
 
 ## Current tools
 
@@ -72,6 +65,7 @@ The current release does **not** read the Custom CSS area and does **not** remov
 | `index_site` | Starts a private site-index job or reports its progress. It finds pages from the signed-in Squarespace page map and saves page, collection item, folder, section, and block records. |
 | `find_site` | Searches the saved index for text, titles, URLs, metadata, block types, and IDs. It returns exact page, section, block, or item locations. |
 | `read_site` | Gets fresh Squarespace data for one indexed result and updates its saved browser record. |
+| `audit_custom_css` | Reads Custom CSS and reports selectors that use a block or section ID that is missing from a complete local index. It does not change the CSS. |
 
 All current tools are read-only. They use HTTP `GET`. They cannot change Squarespace pages, CSS, code, settings, or metadata.
 
@@ -79,7 +73,7 @@ All current tools are read-only. They use HTTP `GET`. They cannot change Squares
 
 The Footer Code Injection script first loads in the Squarespace site preview. It checks that the parent page is a same-origin Squarespace editor URL under `/config`. It then loads one copy into that top editor page. This step is needed because the current built-in browser does not discover WebMCP tools inside an iframe.
 
-On the editor page, the script uses `document.modelContext.registerTool()` to give Codex the three tools. If WebMCP is not present, the script stops and Squarespace continues to work.
+On the editor page, the script uses `document.modelContext.registerTool()` to give Codex the four tools. If WebMCP is not present, the script stops and Squarespace continues to work.
 
 When you run `index_site`, the script:
 
@@ -94,6 +88,8 @@ IndexedDB is a database inside your browser profile. The index stays on your com
 A later index run skips a source when its Squarespace update value did not change. A failed page keeps its last valid records. A page that is no longer in the private page map is removed from the local index.
 
 `find_site` loads the current site's records from IndexedDB and searches them in the page. `read_site` gets one result from Squarespace again and replaces the saved copy for that URL.
+
+`audit_custom_css` reads the Custom CSS text from Squarespace. It parses the CSS in the browser. It compares exact block and section IDs with the IDs in IndexedDB. It stops if the last index had a read error. The result is a review list. It is not an automatic cleanup.
 
 ## Local storage, speed, and privacy risks
 
@@ -137,6 +133,7 @@ These are the Squarespace interfaces and page details used by the current beta:
 | Interface | Use | Status |
 | --- | --- | --- |
 | `GET /api/context/website` | Gets the signed-in site's ID and page map. | Undocumented and unsupported. |
+| `GET /api/template/GetTemplateCustomCss` | Gets the site's Custom CSS text. | Undocumented and unsupported. |
 | `GET <page-or-item>?format=json` | Gets page, collection, pagination, and collection-item data. | Undocumented and unsupported for this use. |
 | Rendered page HTML | Finds `#page`, `[data-section-id]`, `.sqs-block`, block IDs, and block types. | Internal markup can change. |
 | Editor URL and `iframe#sqs-site-frame` | Moves tool registration from the preview into the top `/config` editor page. | Internal editor structure can change. |

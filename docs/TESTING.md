@@ -17,6 +17,9 @@ This slice is complete when:
 - The index does not request `sitemap.xml`.
 - Navigation folders are searchable without a request to their URLs.
 - A `429` response waits and retries without slowing normal requests.
+- The Custom CSS audit reports missing static block and section IDs.
+- The Custom CSS audit keeps grouped selectors separate and skips changing-state selectors.
+- The Custom CSS audit does not run after an index with read errors.
 
 ## Automated
 
@@ -38,6 +41,8 @@ npm run build
 6. Reload the Squarespace Editor and repeat both searches without another index run.
 7. Change test content in Squarespace, then run `read_site` for that record. Confirm that it returns the new content.
 8. Confirm that Squarespace shows no saved content, design, code, or metadata change from the tools.
+9. Add test CSS for one block ID that exists and one block ID that does not exist.
+10. Run `audit_custom_css`. Confirm that it reports only the missing ID and does not change Custom CSS.
 
 ## Normal browser fallback
 
