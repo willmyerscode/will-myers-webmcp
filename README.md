@@ -17,10 +17,10 @@ You use Codex through your ChatGPT account. You do not need an OpenAI API key. A
 In Squarespace, open the Code Injection panel. Paste this line into **Footer**, and then save:
 
 ```html
-<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@v0.6.0-alpha.1/dist/webmcp.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@v0.6.0-alpha.2/dist/webmcp.js"></script>
 ```
 
-The link loads `dist/webmcp.js` from the public GitHub repository through [jsDelivr](https://www.jsdelivr.com/?docs=gh). It is pinned to the `v0.6.0-alpha.1` Git tag, so later work on `main` will not change this file. To get a later alpha, replace the version in the link after a new release is published.
+The link loads `dist/webmcp.js` from the public GitHub repository through [jsDelivr](https://www.jsdelivr.com/?docs=gh). It is pinned to the `v0.6.0-alpha.2` Git tag, so later work on `main` will not change this file. To get a later alpha, replace the version in the link after a new release is published.
 
 Next:
 
