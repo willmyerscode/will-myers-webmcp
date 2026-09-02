@@ -25,9 +25,5 @@
     "linkedom": "^0.18.13",
     "typescript": "^5.9.2",
     "wrangler": "^4.32.0"
-  },
-  "dependencies": {
-    "postcss": "^8.5.26",
-    "postcss-selector-parser": "^7.1.5"
   }
 }

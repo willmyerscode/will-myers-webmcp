@@ -3,11 +3,6 @@ import test from "node:test";
 import { IDBFactory } from "fake-indexeddb";
 import { parseHTML } from "linkedom";
 
-import {
-  allSiteRecords,
-  loadSite,
-  replaceSiteRecords,
-} from "../src/browser-index-storage.js";
 import { boot, startWebMCPBridge } from "../src/index.js";
 
 function makeEditorBrowser({ database = new IDBFactory(), fetch = globalThis.fetch } = {}) {
@@ -67,173 +62,63 @@ test("the signed-in Squarespace Editor registers only the read-only site tools",
   assert.equal(await startWebMCPBridge(browser), true);
   assert.deepEqual(
     registrations.map((tool) => tool.name),
-    ["index_site", "find_site", "read_site", "audit_custom_css"],
+    [
+      "index_site",
+      "find_site",
+      "read_site",
+      "read_site_custom_css",
+      "read_site_code_injection",
+    ],
   );
   assert.ok(registrations.every((tool) => tool.annotations.readOnlyHint));
 });
 
-test("audit_custom_css reports only missing Squarespace block and section IDs as removal candidates", async () => {
-  const database = new IDBFactory();
+test("the site code tools return the current raw settings with GET requests", async () => {
   const requests = [];
-  const customCss = `
-#block-live { color: green; }
-#block-dead, #block-live { color: red; }
-#page-section-section-dead .title { display: none; }
-[data-section-id="section-live"] { padding: 1rem; }
-#block-dynamic:has(.is-open) { opacity: 1; }
-.general-class { color: blue; }
-a[href="#block-link-target"] { text-decoration: none; }
-`;
+  const customCss = "#block-example { color: red; }";
+  const injectionSettings = {
+    header: '<meta name="theme-color" content="#fff">',
+    footer: '<script src="example.js"></script>',
+    lockPage: "",
+    orderConfirmationPage: "<p>Thank you</p>",
+    orderStatusPage: "",
+    postItem: "",
+    isOrderStatusMigrationNeeded: false,
+  };
   const fetch = async (input, options = {}) => {
     const url = new URL(String(input));
     requests.push({ url: url.href, method: options.method || "GET" });
-    if (url.pathname === "/api/context/website") {
-      return Response.json({
-        website: { id: "site-css", siteTitle: "CSS Test" },
-        siteLayout: [
-          {
-            identifier: "mainNav",
-            links: [
-              {
-                collectionId: "page-css",
-                title: "CSS page",
-                fullUrl: "/css-page",
-                typeName: "page",
-                updatedOn: 1,
-              },
-            ],
-          },
-        ],
-      });
-    }
     if (url.pathname === "/api/template/GetTemplateCustomCss") {
       return Response.json({ css: customCss });
     }
-    if (url.pathname === "/css-page" && url.searchParams.has("format")) {
-      return Response.json({
-        collection: {
-          id: "page-css",
-          title: "CSS page",
-          fullUrl: "/css-page",
-          typeName: "page",
-          updatedOn: 1,
-        },
-      });
-    }
-    if (url.pathname === "/css-page") {
-      return new Response(`
-        <main id="page"><section data-section-id="section-live">
-          <div id="block-live" class="sqs-block sqs-block-html"></div>
-        </section></main>
-      `);
+    if (url.pathname === "/api/config/GetInjectionSettings") {
+      return Response.json(injectionSettings);
     }
     return new Response("Not found", { status: 404 });
   };
 
-  const load = makeEditorBrowser({ database, fetch });
+  const load = makeEditorBrowser({ fetch });
   await startWebMCPBridge(load.browser);
-  await runIndex(load.registrations.find((tool) => tool.name === "index_site"));
-
-  const result = await load.registrations
-    .find((tool) => tool.name === "audit_custom_css")
+  const customCssResult = await load.registrations
+    .find((tool) => tool.name === "read_site_custom_css")
+    .execute({});
+  const codeInjectionResult = await load.registrations
+    .find((tool) => tool.name === "read_site_code_injection")
     .execute({});
 
-  assert.equal(result.siteId, "site-css");
-  assert.equal(result.source, "/api/template/GetTemplateCustomCss");
-  assert.equal(result.candidateCount, 2);
-  assert.equal(result.dynamicSelectorsSkipped, 1);
-  assert.deepEqual(result.candidates, [
-    {
-      selector: "#block-dead",
-      line: 3,
-      action: "remove_selector",
-      missing: [{ kind: "block", id: "block-dead" }],
-      reason: "The indexed site has no block with this ID.",
-    },
-    {
-      selector: "#page-section-section-dead .title",
-      line: 4,
-      action: "remove_rule",
-      missing: [{ kind: "section", id: "section-dead" }],
-      reason: "The indexed site has no section with this ID.",
-    },
-  ]);
-  assert.match(result.warning, /does not prove that other selectors are unused/i);
+  assert.deepEqual(customCssResult, {
+    source: "/api/template/GetTemplateCustomCss",
+    css: customCss,
+  });
+  assert.deepEqual(codeInjectionResult, {
+    source: "/api/config/GetInjectionSettings",
+    ...injectionSettings,
+  });
+  assert.deepEqual(
+    requests.map(({ url }) => new URL(url).pathname),
+    ["/api/template/GetTemplateCustomCss", "/api/config/GetInjectionSettings"],
+  );
   assert.ok(requests.every(({ method }) => method === "GET"));
-});
-
-test("audit_custom_css stops when the last site index had a read error", async () => {
-  const database = new IDBFactory();
-  const fetch = async (input) => {
-    const url = new URL(String(input));
-    if (url.pathname === "/api/context/website") {
-      return Response.json({
-        website: { id: "site-css-error", siteTitle: "CSS Error Test" },
-        siteLayout: [
-          {
-            identifier: "mainNav",
-            links: [
-              {
-                collectionId: "page-error",
-                title: "Broken page",
-                fullUrl: "/broken-page",
-                typeName: "page",
-                updatedOn: 1,
-              },
-            ],
-          },
-        ],
-      });
-    }
-    if (url.pathname === "/broken-page") {
-      return new Response("Read failed", { status: 500 });
-    }
-    if (url.pathname === "/api/template/GetTemplateCustomCss") {
-      assert.fail("The tool must not read Custom CSS after an incomplete index.");
-    }
-    return new Response("Not found", { status: 404 });
-  };
-
-  const load = makeEditorBrowser({ database, fetch });
-  await startWebMCPBridge(load.browser);
-  const indexResult = await runIndex(
-    load.registrations.find((tool) => tool.name === "index_site"),
-  );
-  assert.equal(indexResult.errors.length, 1);
-
-  await assert.rejects(
-    load.registrations.find((tool) => tool.name === "audit_custom_css").execute({}),
-    /last site index had read errors/i,
-  );
-});
-
-test("audit_custom_css requires a new index after an upgrade or a failed index job", async () => {
-  const database = new IDBFactory();
-  const fetch = async (input) => {
-    const url = new URL(String(input));
-    if (url.pathname === "/api/context/website") {
-      return Response.json({ website: { id: "site-css-old" }, siteLayout: [] });
-    }
-    if (url.pathname === "/api/template/GetTemplateCustomCss") {
-      return Response.json({ css: "#block-old { display: none; }" });
-    }
-    return new Response("Not found", { status: 404 });
-  };
-  const load = makeEditorBrowser({ database, fetch });
-  await startWebMCPBridge(load.browser);
-  await runIndex(load.registrations.find((tool) => tool.name === "index_site"));
-
-  const origin = new URL(load.browser.location.href).origin;
-  const oldSite = await loadSite(load.browser, origin);
-  const records = await allSiteRecords(load.browser, oldSite.siteId);
-  delete oldSite.indexErrorCount;
-  await replaceSiteRecords(load.browser, oldSite, records);
-
-  const auditTool = load.registrations.find((tool) => tool.name === "audit_custom_css");
-  await assert.rejects(auditTool.execute({}), /read errors or is too old/i);
-
-  load.browser.__squarespaceSiteIndexJob = { status: "failed" };
-  await assert.rejects(auditTool.execute({}), /last site index failed/i);
 });
 
 test("index_site starts a long crawl in the background and reports its status", async () => {

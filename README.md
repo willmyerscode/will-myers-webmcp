@@ -41,22 +41,22 @@ Try prompts such as:
 - “Find every page or collection item that contains the words `summer workshop`.”
 - “Find every block that mentions `old product name`.”
 - “Read this search result again and tell me if its content is still current.”
-- “Check my Custom CSS and show selectors that did not match any indexed page. For each unused-CSS candidate, explain what could make it a false positive. Make a review list of the safest CSS candidates to remove. Keep dynamic, responsive, commerce, and system-page rules.”
+- “Read my Custom CSS. Use the site index to find CSS that may no longer be needed. Explain the evidence and possible mistakes. Do not change anything.”
+- “Read my site-wide Code Injection. Explain what each script does and flag duplicate or broken-looking code. Do not change anything.”
 
 ## Current focus: find Custom CSS that may be unused
 
 The narrow goal is to help a person review the Squarespace Custom CSS area. The current flow is:
 
-1. Run `index_site` and wait for it to finish without errors.
-2. Run `audit_custom_css`.
-3. The tool reads the site's Custom CSS.
-4. It finds selectors that use a specific Squarespace block or section ID.
-5. It reports an ID when that ID is not in the local site index.
-6. You review the report before you remove any CSS.
+1. Run `index_site` and wait for it to finish.
+2. Run `read_site_custom_css` to get the current CSS text.
+3. Ask Codex to compare the CSS with the site index.
+4. Codex makes the judgment and explains its evidence.
+5. You review the answer before you remove any CSS.
 
-This is a small and careful first check. It does not test general class selectors. It skips ID selectors that use `:has()`, `:is()`, `:not()`, or `:where()`. A selector that is absent from saved page HTML can still be used by a menu, hover state, pop-up, store page, member area, mobile layout, injected widget, or other temporary state. The tool gives you candidates to review. It does not promise that automatic removal is safe.
+The WebMCP tool does not decide what is safe to remove. It only reads the CSS. Codex does the analysis. A selector that is absent from saved page HTML can still be used by a menu, hover state, pop-up, store page, member area, mobile layout, injected widget, or other temporary state. Treat each answer as a review suggestion, not proof.
 
-The tool does **not** remove or save CSS. It only reads and reports.
+The tool does **not** remove or save CSS.
 
 ## Current tools
 
@@ -65,7 +65,8 @@ The tool does **not** remove or save CSS. It only reads and reports.
 | `index_site` | Starts a private site-index job or reports its progress. It finds pages from the signed-in Squarespace page map and saves page, collection item, folder, section, and block records. |
 | `find_site` | Searches the saved index for text, titles, URLs, metadata, block types, and IDs. It returns exact page, section, block, or item locations. |
 | `read_site` | Gets fresh Squarespace data for one indexed result and updates its saved browser record. |
-| `audit_custom_css` | Reads Custom CSS and reports selectors that use a block or section ID that is missing from a complete local index. It does not change the CSS. |
+| `read_site_custom_css` | Returns the current Custom CSS text. It does not analyze or change the CSS. |
+| `read_site_code_injection` | Returns the current site-wide Code Injection fields. It does not analyze or change the code. |
 
 All current tools are read-only. They use HTTP `GET`. They cannot change Squarespace pages, CSS, code, settings, or metadata.
 
@@ -73,7 +74,7 @@ All current tools are read-only. They use HTTP `GET`. They cannot change Squares
 
 The Footer Code Injection script first loads in the Squarespace site preview. It checks that the parent page is a same-origin Squarespace editor URL under `/config`. It then loads one copy into that top editor page. This step is needed because the current built-in browser does not discover WebMCP tools inside an iframe.
 
-On the editor page, the script uses `document.modelContext.registerTool()` to give Codex the four tools. If WebMCP is not present, the script stops and Squarespace continues to work.
+On the editor page, the script uses `document.modelContext.registerTool()` to give Codex the five tools. If WebMCP is not present, the script stops and Squarespace continues to work.
 
 When you run `index_site`, the script:
 
@@ -89,7 +90,7 @@ A later index run skips a source when its Squarespace update value did not chang
 
 `find_site` loads the current site's records from IndexedDB and searches them in the page. `read_site` gets one result from Squarespace again and replaces the saved copy for that URL.
 
-`audit_custom_css` reads the Custom CSS text from Squarespace. It parses the CSS in the browser. It compares exact block and section IDs with the IDs in IndexedDB. It stops if the last index had a read error. The result is a review list. It is not an automatic cleanup.
+`read_site_custom_css` returns the current Custom CSS text. `read_site_code_injection` returns the current header, footer, lock-page, order, and blog-post injection fields. The tools do not parse, judge, or change this code. Codex can analyze the returned text when you ask it a question.
 
 ## Local storage, speed, and privacy risks
 
@@ -134,6 +135,7 @@ These are the Squarespace interfaces and page details used by the current beta:
 | --- | --- | --- |
 | `GET /api/context/website` | Gets the signed-in site's ID and page map. | Undocumented and unsupported. |
 | `GET /api/template/GetTemplateCustomCss` | Gets the site's Custom CSS text. | Undocumented and unsupported. |
+| `GET /api/config/GetInjectionSettings` | Gets the site-wide Code Injection fields. | Undocumented and unsupported. |
 | `GET <page-or-item>?format=json` | Gets page, collection, pagination, and collection-item data. | Undocumented and unsupported for this use. |
 | Rendered page HTML | Finds `#page`, `[data-section-id]`, `.sqs-block`, block IDs, and block types. | Internal markup can change. |
 | Editor URL and `iframe#sqs-site-frame` | Moves tool registration from the preview into the top `/config` editor page. | Internal editor structure can change. |

@@ -1,5 +1,5 @@
 import { findSite, readSite, runIndexSiteTool } from "./site-index.js";
-import { auditCustomCss } from "./custom-css-audit.js";
+import { readSiteCodeInjection, readSiteCustomCss } from "./site-code.js";
 
 /** @param {any} browser @param {string} message @param {unknown} error */
 function logWarning(browser, message, error) {
@@ -96,10 +96,21 @@ export async function startWebMCPBridge(browser = window) {
       },
     },
     {
-      name: "audit_custom_css",
-      title: "Find missing IDs in Squarespace Custom CSS",
+      name: "read_site_custom_css",
+      title: "Read this site's Custom CSS",
       description:
-        "Read Custom CSS and report selectors that use a Squarespace block or section ID that is absent from the private site index. Run index_site first. This is a narrow review aid. It does not change CSS and it does not prove that other selectors are unused.",
+        "Return the current Custom CSS text from Squarespace. It does not analyze or change the CSS.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "read_site_code_injection",
+      title: "Read this site's Code Injection",
+      description:
+        "Return the current site-wide Code Injection settings from Squarespace. It does not analyze or change the code.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -122,7 +133,11 @@ export async function startWebMCPBridge(browser = window) {
           if (tool.name === "index_site") return runIndexSiteTool(browser, input);
           if (tool.name === "find_site") return findSite(browser, input);
           if (tool.name === "read_site") return readSite(browser, input);
-          return auditCustomCss(browser);
+          if (tool.name === "read_site_custom_css") return readSiteCustomCss(browser);
+          if (tool.name === "read_site_code_injection") {
+            return readSiteCodeInjection(browser);
+          }
+          throw new Error(`Unknown tool: ${tool.name}`);
         },
       },
       { signal: controller.signal },
