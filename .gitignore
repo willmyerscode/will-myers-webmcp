@@ -1,5 +1,7 @@
 node_modules/
-dist/
+dist/*
+!dist/webmcp.js
+!dist/webmcp.js.map
 .wrangler/
 .playwright-cli/
 *.log
