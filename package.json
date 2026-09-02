@@ -1,6 +1,6 @@
 {
   "name": "will-myers-webmcp",
-  "version": "0.6.0-alpha.3",
+  "version": "0.6.0-alpha.4",
   "private": true,
   "description": "Read-only WebMCP tools for inspecting a Squarespace site in Codex.",
   "license": "MIT",

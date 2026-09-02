@@ -39,7 +39,7 @@ npm run build
 4. Search for a normal page block and confirm its page, section, and block IDs.
 5. Search for a Technical Blog item that is not on the first collection page.
 6. Reload the Squarespace Editor and repeat both searches without another index run.
-7. Change test content in Squarespace, then run `read_site` for that record. Confirm that it returns the new content.
+7. Change test content in Squarespace, then run `read_site_record` for that record. Confirm that it returns the new content.
 8. Confirm that Squarespace shows no saved content, design, code, or metadata change from the tools.
 9. Run `read_site_custom_css`. Confirm that it returns the current CSS and does not change it.
 10. Run `read_site_code_injection`. Confirm that it returns the current fields and does not change them.

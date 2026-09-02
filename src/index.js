@@ -1,4 +1,4 @@
-import { findSite, readSite, runIndexSiteTool } from "./site-index.js";
+import { readSiteRecord, runIndexSiteTool, searchSite } from "./site-index.js";
 import { readSiteCodeInjection, readSiteCustomCss } from "./site-code.js";
 
 /** @param {any} browser @param {string} message @param {unknown} error */
@@ -64,8 +64,8 @@ export async function startWebMCPBridge(browser = window) {
       },
     },
     {
-      name: "find_site",
-      title: "Find content on this Squarespace site",
+      name: "search_site",
+      title: "Search this Squarespace site",
       description:
         "Search the private browser index for page text, titles, URLs, block types, and metadata. It does not fetch or change Squarespace.",
       inputSchema: {
@@ -79,8 +79,8 @@ export async function startWebMCPBridge(browser = window) {
       },
     },
     {
-      name: "read_site",
-      title: "Read current Squarespace content",
+      name: "read_site_record",
+      title: "Read one current Squarespace record",
       description:
         "Fetch current Squarespace data for one indexed page, section, block, or collection item, then refresh its private browser record. It does not change Squarespace.",
       inputSchema: {
@@ -131,8 +131,8 @@ export async function startWebMCPBridge(browser = window) {
         },
         async execute(input) {
           if (tool.name === "index_site") return runIndexSiteTool(browser, input);
-          if (tool.name === "find_site") return findSite(browser, input);
-          if (tool.name === "read_site") return readSite(browser, input);
+          if (tool.name === "search_site") return searchSite(browser, input);
+          if (tool.name === "read_site_record") return readSiteRecord(browser, input);
           if (tool.name === "read_site_custom_css") return readSiteCustomCss(browser);
           if (tool.name === "read_site_code_injection") {
             return readSiteCodeInjection(browser);

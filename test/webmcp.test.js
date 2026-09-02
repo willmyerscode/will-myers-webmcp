@@ -64,8 +64,8 @@ test("the signed-in Squarespace Editor registers only the read-only site tools",
     registrations.map((tool) => tool.name),
     [
       "index_site",
-      "find_site",
-      "read_site",
+      "search_site",
+      "read_site_record",
       "read_site_custom_css",
       "read_site_code_injection",
     ],
@@ -156,7 +156,7 @@ test("index_site starts a long crawl in the background and reports its status", 
   assert.equal(sitemapRequests, 0);
 });
 
-test("index_site and read_site cannot run at the same time", async () => {
+test("index_site and read_site_record cannot run at the same time", async () => {
   const database = new IDBFactory();
   let holdContext = false;
   let releaseContext;
@@ -218,7 +218,7 @@ test("index_site and read_site cannot run at the same time", async () => {
   const load = makeEditorBrowser({ database, fetch });
   await startWebMCPBridge(load.browser);
   const indexTool = load.registrations.find((tool) => tool.name === "index_site");
-  const readTool = load.registrations.find((tool) => tool.name === "read_site");
+  const readTool = load.registrations.find((tool) => tool.name === "read_site_record");
   await runIndex(indexTool);
 
   holdContext = true;
@@ -238,7 +238,7 @@ test("index_site and read_site cannot run at the same time", async () => {
   try {
     await assert.rejects(
       () => indexTool.execute({ action: "start" }),
-      /while read_site is running/,
+      /while read_site_record is running/,
     );
   } finally {
     releaseRead();
@@ -440,7 +440,7 @@ test("the browser index keeps paginated collection items after the bridge reload
 
   const secondLoad = makeEditorBrowser({ database, fetch });
   await startWebMCPBridge(secondLoad.browser);
-  const findTool = secondLoad.registrations.find((tool) => tool.name === "find_site");
+  const findTool = secondLoad.registrations.find((tool) => tool.name === "search_site");
   const found = await findTool.execute({ query: "deeply technical" });
 
   assert.equal(found.total, 1);
@@ -468,7 +468,7 @@ test("the browser index keeps paginated collection items after the bridge reload
   await assert.rejects(
     () =>
       secondLoad.registrations
-        .find((tool) => tool.name === "read_site")
+        .find((tool) => tool.name === "read_site_record")
         .execute({ record_id: "site-123:item:post-2" }),
     /HTML instead of JSON/,
   );
@@ -487,7 +487,7 @@ test("the browser index keeps paginated collection items after the bridge reload
   await assert.rejects(
     () =>
       secondLoad.registrations
-        .find((tool) => tool.name === "read_site")
+        .find((tool) => tool.name === "read_site_record")
         .execute({ record_id: "site-123:item:post-2" }),
     /HTML instead of JSON/,
   );
@@ -578,7 +578,7 @@ test("index_site retries a failed full collection-item read", async () => {
   const load = makeEditorBrowser({ database, fetch });
   await startWebMCPBridge(load.browser);
   const indexTool = load.registrations.find((tool) => tool.name === "index_site");
-  const findTool = load.registrations.find((tool) => tool.name === "find_site");
+  const findTool = load.registrations.find((tool) => tool.name === "search_site");
 
   const first = await runIndex(indexTool);
   assert.equal(first.errors.length, 1);
@@ -645,7 +645,7 @@ test("the browser index finds text at an exact page, section, and block location
   await startWebMCPBridge(load.browser);
   await runIndex(load.registrations.find((tool) => tool.name === "index_site"));
   const found = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "migration planning" });
 
   assert.equal(found.total, 1);
@@ -663,13 +663,13 @@ test("the browser index finds text at an exact page, section, and block location
   });
 
   const metadataMatch = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "Migration experts" });
   assert.equal(metadataMatch.total, 1);
   assert.equal(metadataMatch.results[0].kind, "page");
 
   const blockTypeMatch = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "html" });
   assert.equal(blockTypeMatch.total, 1);
   assert.equal(blockTypeMatch.results[0].blockId, "block-copy");
@@ -718,14 +718,14 @@ test("index_site uses rendered HTML when a normal page does not return JSON", as
   assert.deepEqual(indexed.errors, []);
 
   const found = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "Content from rendered HTML" });
   assert.equal(found.total, 1);
   assert.equal(found.results[0].recordId, "site-html:block:block-html");
   assert.equal(found.results[0].title, "HTML document title");
 
   const read = await load.registrations
-    .find((tool) => tool.name === "read_site")
+    .find((tool) => tool.name === "read_site_record")
     .execute({ record_id: "site-html:block:block-html" });
   assert.equal(read.found, true);
   assert.equal(read.record.content, "Content from rendered HTML.");
@@ -781,7 +781,7 @@ test("index_site stores Squarespace navigation folders without fetching them", a
   assert.equal(folderRequests, 0);
 
   const found = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "Services" });
   assert.equal(found.total, 1);
   assert.equal(found.results[0].kind, "folder");
@@ -919,7 +919,7 @@ test("index_site uses fallback delays and stops after five 429 retries", async (
   ]);
 });
 
-test("read_site returns fresh block content and updates the browser index", async () => {
+test("read_site_record returns fresh block content and updates the browser index", async () => {
   const database = new IDBFactory();
   let pageText = "Old migration plan";
   let invalidResponse = null;
@@ -989,7 +989,7 @@ test("read_site returns fresh block content and updates the browser index", asyn
 
   pageText = "Fresh migration plan for 1,000 pages";
   const read = await load.registrations
-    .find((tool) => tool.name === "read_site")
+    .find((tool) => tool.name === "read_site_record")
     .execute({ record_id: "site-read:block:block-services" });
 
   assert.equal(read.found, true);
@@ -998,7 +998,7 @@ test("read_site returns fresh block content and updates the browser index", asyn
   assert.equal(read.record.updatedOn, 301);
 
   const found = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "1,000 pages" });
   assert.equal(found.total, 1);
   assert.equal(found.results[0].blockId, "block-services");
@@ -1007,7 +1007,7 @@ test("read_site returns fresh block content and updates the browser index", asyn
   await assert.rejects(
     () =>
       load.registrations
-        .find((tool) => tool.name === "read_site")
+        .find((tool) => tool.name === "read_site_record")
         .execute({ record_id: "site-read:block:block-services" }),
     /valid page or item data/,
   );
@@ -1015,7 +1015,7 @@ test("read_site returns fresh block content and updates the browser index", asyn
   await assert.rejects(
     () =>
       load.registrations
-        .find((tool) => tool.name === "read_site")
+        .find((tool) => tool.name === "read_site_record")
         .execute({ record_id: "site-read:block:block-services" }),
     /valid JSON/,
   );
@@ -1023,13 +1023,13 @@ test("read_site returns fresh block content and updates the browser index", asyn
   await assert.rejects(
     () =>
       load.registrations
-        .find((tool) => tool.name === "read_site")
+        .find((tool) => tool.name === "read_site_record")
         .execute({ record_id: "site-read:block:block-services" }),
     /valid Squarespace page HTML/,
   );
   assert.equal(
     (await load.registrations
-      .find((tool) => tool.name === "find_site")
+      .find((tool) => tool.name === "search_site")
       .execute({ query: "1,000 pages" })).total,
     1,
   );
@@ -1088,7 +1088,7 @@ test("index_site skips unchanged pages, keeps failed pages, and removes missing 
   const load = makeEditorBrowser({ database, fetch });
   await startWebMCPBridge(load.browser);
   const indexTool = load.registrations.find((tool) => tool.name === "index_site");
-  const findTool = load.registrations.find((tool) => tool.name === "find_site");
+  const findTool = load.registrations.find((tool) => tool.name === "search_site");
 
   await runIndex(indexTool);
   assert.equal(pageFetches, 2);
@@ -1107,7 +1107,7 @@ test("index_site skips unchanged pages, keeps failed pages, and removes missing 
   assert.equal((await findTool.execute({ query: "Beta page" })).total, 0);
 });
 
-test("find_site searches a 1,000-item site index in less than one second", async () => {
+test("search_site searches a 1,000-item site index in less than one second", async () => {
   const database = new IDBFactory();
   const items = Array.from({ length: 1_000 }, (_, index) => ({
     id: `item-${index}`,
@@ -1177,7 +1177,7 @@ test("find_site searches a 1,000-item site index in less than one second", async
 
   const started = performance.now();
   const found = await load.registrations
-    .find((tool) => tool.name === "find_site")
+    .find((tool) => tool.name === "search_site")
     .execute({ query: "final-needle" });
   const duration = performance.now() - started;
 

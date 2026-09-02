@@ -17,10 +17,10 @@ You use Codex through your ChatGPT account. You do not need an OpenAI API key. A
 In Squarespace, open the Code Injection panel. Paste this line into **Footer**, and then save:
 
 ```html
-<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@0.6.0-alpha.3/dist/webmcp.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/willmyerscode/will-myers-webmcp@0.6.0-alpha.4/dist/webmcp.js"></script>
 ```
 
-The link loads `dist/webmcp.js` from the public GitHub repository through [jsDelivr](https://www.jsdelivr.com/?docs=gh). The jsDelivr version `0.6.0-alpha.3` maps to the `v0.6.0-alpha.3` Git tag, so later work on `main` will not change this file. To get a later alpha, replace the version in the link after a new release is published.
+The link loads `dist/webmcp.js` from the public GitHub repository through [jsDelivr](https://www.jsdelivr.com/?docs=gh). The jsDelivr version `0.6.0-alpha.4` maps to the `v0.6.0-alpha.4` Git tag, so later work on `main` will not change this file. To get a later alpha, replace the version in the link after a new release is published.
 
 Next:
 
@@ -63,8 +63,8 @@ The tool does **not** remove or save CSS.
 | Tool | What it does |
 | --- | --- |
 | `index_site` | Starts a private site-index job or reports its progress. It finds pages from the signed-in Squarespace page map and saves page, collection item, folder, section, and block records. |
-| `find_site` | Searches the saved index for text, titles, URLs, metadata, block types, and IDs. It returns exact page, section, block, or item locations. |
-| `read_site` | Gets fresh Squarespace data for one indexed result and updates its saved browser record. |
+| `search_site` | Searches the current site's saved index for text, titles, URLs, metadata, block types, and IDs. It returns exact page, section, block, or item locations. |
+| `read_site_record` | Gets fresh Squarespace data for one indexed page, section, block, or item record and updates its saved browser copy. |
 | `read_site_custom_css` | Returns the current Custom CSS text. It does not analyze or change the CSS. |
 | `read_site_code_injection` | Returns the current site-wide Code Injection fields. It does not analyze or change the code. |
 
@@ -88,7 +88,7 @@ IndexedDB is a database inside your browser profile. The index stays on your com
 
 A later index run skips a source when its Squarespace update value did not change. A failed page keeps its last valid records. A page that is no longer in the private page map is removed from the local index.
 
-`find_site` loads the current site's records from IndexedDB and searches them in the page. `read_site` gets one result from Squarespace again and replaces the saved copy for that URL.
+`search_site` loads the current site's records from IndexedDB and searches them in the page. `read_site_record` gets one result from Squarespace again and replaces the saved copy for that URL.
 
 `read_site_custom_css` returns the current Custom CSS text. `read_site_code_injection` returns the current header, footer, lock-page, order, and blog-post injection fields. The tools do not parse, judge, or change this code. Codex can analyze the returned text when you ask it a question.
 

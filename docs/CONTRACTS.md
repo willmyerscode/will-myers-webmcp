@@ -14,7 +14,7 @@ Every response includes `status` and progress counts. A complete result also inc
 
 Normal requests have no added delay. A `429` response uses `Retry-After`. Without that header, delays are 1, 2, 4, 8, then 16 seconds. The tool makes at most five retries. Each fallback delay is limited to 30 seconds.
 
-## `find_site`
+## `search_site`
 
 Purpose: search the saved browser index.
 
@@ -25,13 +25,13 @@ Inputs:
 
 It searches page titles, URLs, content, SEO metadata, item tags and categories, block IDs, and block types. Each result includes a record ID, URL, title, kind, page ID, section ID, block ID, block type, update value, and text sample.
 
-## `read_site`
+## `read_site_record`
 
 Purpose: get fresh Squarespace data for one indexed record and update its browser copy.
 
 Inputs:
 
-- `record_id`: an ID returned by `find_site`; or
+- `record_id`: an ID returned by `search_site`; or
 - `url`: an indexed site URL, with optional `section_id` or `block_id`.
 
 The result says whether the record still exists and returns its current content, metadata, raw source data, and exact location. A 404 response removes the old records for that URL. Other read errors keep the last valid records. An index job and a live read cannot run at the same time. This prevents one job from replacing the other job's data.
